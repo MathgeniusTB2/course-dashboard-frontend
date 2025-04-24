@@ -612,30 +612,36 @@
     let assessmentTypeFilterState = new Map();
     let workTypeFilterState = new Map();
 
+    const BACKEND_URL = "https://course-dashboard-backend.onrender.com";
+
     async function fetchAndInit(codes) {
-        const resp = await fetch('/api/courses', {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ subject_codes: codes })
-        });
-        const raw = await resp.json();
-        courses = raw.map(c => ({
-            code: c.code,
-            name: c.title,
-            prerequisites: c.requisites || "None specified",
-            assessments: c.assessment.map(a => {
-                // Based on the actual JSON structure you provided
-                return {
-                    name: a.title,
-                    type: a.details['Type'] || 'Unknown',
-                    groupwork: a.details['Groupwork'] || 'Individual',
-                    weight: Number((a.details['Weight']||'0').replace('%','')) || 0,
-                    length: a.details['Length'] || 'Not specified',
-                    intent: a.details['Intent'] || ''
-                };
-            })
-        }));
-        initializeDashboard();
+        try {
+            const resp = await fetch(`${BACKEND_URL}/api/courses`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ subject_codes: codes })
+            });
+            const raw = await resp.json();
+            courses = raw.map(c => ({
+                code: c.code,
+                name: c.title,
+                prerequisites: c.requisites || "None specified",
+                assessments: c.assessment.map(a => {
+                    // Based on the actual JSON structure you provided
+                    return {
+                        name: a.title,
+                        type: a.details['Type'] || 'Unknown',
+                        groupwork: a.details['Groupwork'] || 'Individual',
+                        weight: Number((a.details['Weight']||'0').replace('%','')) || 0,
+                        length: a.details['Length'] || 'Not specified',
+                        intent: a.details['Intent'] || ''
+                    };
+                })
+            }));
+            initializeDashboard();
+        } catch (e) {
+            alert('Failed to fetch courses.');
+        }
     }
 
     // Helper function to determine groupwork status
