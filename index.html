@@ -585,6 +585,9 @@
 <body>
     <h1>Course Assessment Dashboard</h1>
     <button id="fetchBtn">Fetch Courses</button>
+    <div id="loadingSpinner" style="display:none;text-align:center;margin:20px 0;">
+        <span style="display:inline-block;width:40px;height:40px;border:4px solid #3498db;border-top:4px solid #e3e8f0;border-radius:50%;animation:spin 1s linear infinite;"></span>
+    </div>
     <div class="controls">
         <div class="filter-section">
             <h3>Filter by Assessment Type</h3>
@@ -605,7 +608,12 @@
         </div>
     </div>
     <div class="card-container" id="courseContainer"></div>
-
+    <style>
+    @keyframes spin {
+        0% { transform: rotate(0deg);}
+        100% { transform: rotate(360deg);}
+    }
+    </style>
     <script>
     let courses = [];
     // Filter state: Map<filterName, 0|1|-1> (0=neutral, 1=include, -1=exclude)
@@ -615,6 +623,8 @@
     const BACKEND_URL = "https://course-dashboard-backend.onrender.com";
 
     async function fetchAndInit(codes) {
+        const spinner = document.getElementById('loadingSpinner');
+        spinner.style.display = '';
         try {
             const resp = await fetch(`${BACKEND_URL}/api/courses`, {
                 method: 'POST',
@@ -641,6 +651,8 @@
             initializeDashboard();
         } catch (e) {
             alert('Failed to fetch courses.');
+        } finally {
+            spinner.style.display = 'none';
         }
     }
 
