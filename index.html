@@ -1673,11 +1673,8 @@ Autumn session
                     `;
                 }).join('');
 
-                // Properly escape the course data
-                const courseData = encodeURIComponent(JSON.stringify(course));
-
                 return `
-                    <div class="course-card" data-course="${courseData}">
+                    <div class="course-card" data-course-code="${course.code}" tabindex="0">
                         <div class="card-header">
                             <h2>${course.code} - ${course.title}</h2>
                             <p>${course.credit_points}</p>
@@ -1697,8 +1694,23 @@ Autumn session
                 `;
             }).join('');
 
-            // Add click handlers after rendering
-            attachCardHandlers();
+            // Attach click handlers to course cards
+            document.querySelectorAll('.course-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const code = this.getAttribute('data-course-code');
+                    const course = courses.find(c => c.code === code);
+                    if (course) {
+                        showCourseDetail(course);
+                    }
+                });
+
+                card.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        this.click();
+                    }
+                });
+            });
 
         } catch (error) {
             console.error('Error rendering courses:', error);
