@@ -1270,16 +1270,62 @@ Autumn session
             return;
         }
 
-        // Filter courses based on search and other criteria
+        // Apply all filters
         const filteredCourses = courses.filter(course => {
             if (!course) return false;
             
+            // Text search filter
             if (searchVal && !(
                 (course.title || '').toLowerCase().includes(searchVal) || 
-                (course.code || '').includes(searchVal))
-            ) {
+                (course.code || '').includes(searchVal)
+            )) {
                 return false;
             }
+
+            // Assessment type filter
+            if (assessmentTypeFilterState.size > 0 && course.assessments) {
+                const assessmentTypes = new Set(course.assessments.map(a => a.type));
+                let includeBasedOnAssessment = false;
+                let hasExcluded = false;
+
+                for (const [type, state] of assessmentTypeFilterState) {
+                    if (state === 1 && assessmentTypes.has(type)) {
+                        includeBasedOnAssessment = true;
+                    }
+                    if (state === -1 && assessmentTypes.has(type)) {
+                        hasExcluded = true;
+                    }
+                }
+
+                // If there are include filters but none match, or if there are exclude filters and they match
+                if ((Array.from(assessmentTypeFilterState.values()).includes(1) && !includeBasedOnAssessment) || 
+                    hasExcluded) {
+                    return false;
+                }
+            }
+
+            // Work type filter
+            if (workTypeFilterState.size > 0 && course.assessments) {
+                const workTypes = new Set(course.assessments.map(a => a.groupwork));
+                let includeBasedOnWork = false;
+                let hasExcluded = false;
+
+                for (const [type, state] of workTypeFilterState) {
+                    if (state === 1 && workTypes.has(type)) {
+                        includeBasedOnWork = true;
+                    }
+                    if (state === -1 && workTypes.has(type)) {
+                        hasExcluded = true;
+                    }
+                }
+
+                // If there are include filters but none match, or if there are exclude filters and they match
+                if ((Array.from(workTypeFilterState.values()).includes(1) && !includeBasedOnWork) || 
+                    hasExcluded) {
+                    return false;
+                }
+            }
+
             return true;
         });
 
