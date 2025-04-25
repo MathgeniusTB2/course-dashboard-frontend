@@ -978,167 +978,37 @@ Autumn session
         const progress = document.getElementById('loadingProgress');
         const errorsDiv = document.getElementById('loadingErrors');
         
+        if (!spinner || !status || !progress || !errorsDiv) {
+            console.error('Required UI elements not found');
+            return;
+        }
+        
         spinner.style.display = 'block';
         progress.style.width = '0%';
-        progress.style.transition = 'width 0.5s ease-out';
         errorsDiv.innerHTML = '';
         
-        // Ensure backend is warmed up before proceeding
+        // Ensure backend is warmed up
         if (!isWarmedUp) {
             const warmedUp = await warmupBackend();
-            if (!warmedUp) {
-                return;
-            }
+            if (!warmedUp) return;
         }
 
-        let errors = [];
-        let successfulCourses = [];
-        
         try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), WARMUP_TIMEOUT);
-
-            const resp = await fetch(`${BACKEND_URL}/api/courses`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ subject_codes: codes }),
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!resp.ok) {
-                throw new Error(`HTTP error! status: ${resp.status}`);
-            }
-
-            const reader = resp.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            let lastPercentage = 0;
-
-            while (true) {
-                const {value, done} = await reader.read();
-                if (done) break;
-                
-                buffer += decoder.decode(value, {stream: true});
-                const lines = buffer.split('\n');
-                buffer = lines.pop(); // Keep incomplete line in buffer
-                
-                for (const line of lines) {
-                    if (!line.trim()) continue;
-                    try {
-                        const data = JSON.parse(line);
-                        
-                        if (data.type === 'progress') {
-                            const percentage = Math.round((data.current / data.total) * 100);
-                            
-                            if (percentage > lastPercentage) {
-                                lastPercentage = percentage;
-                                requestAnimationFrame(() => {
-                                    progress.style.width = `${percentage}%`;
-                                });
-                            }
-                            
-                            if (data.status === 'fetching') {
-                                status.textContent = `Fetching ${data.code} (${data.current}/${data.total})`;
-                            } else {
-                                status.textContent = `Processed ${data.code} (${data.current + 1}/${data.total})`;
-                            }
-                            
-                            if (data.error) {
-                                errors.push(`${data.code}: ${data.error}`);
-                                errorsDiv.innerHTML = errors.map(err => 
-                                    `<div class="error-item">${err}</div>`
-                                ).join('');
-                            }
-                        }
-                        else if (data.type === 'complete') {
-                            successfulCourses = data.results
-                                .filter(c => !c.error)
-                                .map(c => ({
-                                    code: c.code,
-                                    title: c.title,
-                                    credit_points: c.credit_points,
-                                    prerequisites: c.requisites,
-                                    overview: c.overview,
-                                    learning_outcomes: c.learning_outcomes,
-                                    assessments: (c.assessment || []).map(a => ({
-                                        name: a.title,
-                                        type: a.details.Type || 'Unknown',
-                                        groupwork: determineGroupwork(a.details.Groupwork),
-                                        weight: parseInt((a.details.Weight || '0').replace(/%/g, ''), 10) || 0,
-                                        length: a.details.Length || 'Not specified',
-                                        intent: a.details.Intent || ''
-                                    }))
-                                }));
-                            
-                            courses = successfulCourses;
-                            if (courses.length > 0) {
-                                initializeDashboard();
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Error processing message:', e, 'Line:', line);
-                    }
-                }
-            }
-            
-            status.textContent = `Loaded ${successfulCourses.length} courses` + 
-                (errors.length ? ` (${errors.length} failed)` : '');
-                
-        } catch (e) {
-            console.error('Fetch error:', e);
-            if (e.name === 'AbortError') {
-                status.textContent = 'Request timed out. The server may be starting up, please try again.';
-            } else {
-                status.textContent = 'Failed to fetch courses';
-            }
-            errorsDiv.innerHTML = `<div class="error-item">Error: ${e.message}</div>`;
-        } finally {
-            setTimeout(() => {
-                if (errors.length === 0) {
-                    spinner.style.display = 'none';
-                } else {
-                    setTimeout(() => {
-                        spinner.style.display = 'none';
-                    }, 3000);
-                }
-            }, 500);
-        }
-    }
-
-    // Filter state: Map<filterName, 0|1|-1> (0=neutral, 1=include, -1=exclude)
-    let assessmentTypeFilterState = new Map();
-    let workTypeFilterState = new Map();
-
-    async function fetchAndInit(codes) {
-        const spinner = document.getElementById('loadingSpinner');
-        const status = document.getElementById('loadingStatus');
-        const progress = document.getElementById('loadingProgress');
-        const errorsDiv = document.getElementById('loadingErrors');
-        
-        spinner.style.display = 'block';
-        progress.style.width = '0%';
-        progress.style.transition = 'width 0.5s ease-out';
-        errorsDiv.innerHTML = '';
-        let errors = [];
-        let successfulCourses = [];
-        
-        try {
-            const resp = await fetch(`${BACKEND_URL}/api/courses`, {
+            const response = await fetch(`${BACKEND_URL}/api/courses`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ subject_codes: codes })
             });
 
-            if (!resp.ok) {
-                throw new Error(`HTTP error! status: ${resp.status}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const reader = resp.body.getReader();
+            const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
-            let lastPercentage = 0;
+            let completed = 0;
+            let total = codes.length;
 
             while (true) {
                 const {value, done} = await reader.read();
@@ -1154,51 +1024,36 @@ Autumn session
                         const data = JSON.parse(line);
                         
                         if (data.type === 'progress') {
-                            // Calculate percentage
-                            const percentage = Math.round((data.current / data.total) * 100);
+                            completed = data.completed;
+                            total = data.total;
+                            const percentage = Math.round((completed / total) * 100);
+                            progress.style.width = `${percentage}%`;
+                            status.textContent = `Processing ${data.code}... (${completed}/${total})`;
                             
-                            // Only update if percentage has increased
-                            if (percentage > lastPercentage) {
-                                lastPercentage = percentage;
-                                requestAnimationFrame(() => {
-                                    progress.style.width = `${percentage}%`;
-                                });
-                            }
-                            
-                            // Update status message
-                            if (data.status === 'fetching') {
-                                status.textContent = `Fetching ${data.code} (${data.current}/${data.total})`;
-                            } else {
-                                status.textContent = `Processed ${data.code} (${data.current + 1}/${data.total})`;
-                            }
-                            
-                            if (data.status === 'error') {
-                                errors.push(`${data.code}: ${data.error || 'Failed to fetch'}`);
-                                errorsDiv.innerHTML = errors.map(err => 
-                                    `<div class="error-item">${err}</div>`
-                                ).join('');
+                            if (data.error) {
+                                errorsDiv.innerHTML += `<div class="error-item">${data.code}: ${data.error}</div>`;
                             }
                         }
                         else if (data.type === 'complete') {
-                            // Process successful courses
-                            successfulCourses = data.results
-                                .filter(c => !c.error)
-                                .map(c => ({
-                                    code: c.code,
-                                    name: c.title,
-                                    prerequisites: c.requisites,
-                                    assessments: (c.assessment || []).map(a => ({
-                                        name: a.title,
-                                        type: a.details.Type || 'Unknown',
-                                        groupwork: determineGroupwork(a.details.Groupwork),
-                                        weight: parseInt((a.details.Weight || '0').replace(/%/g, ''), 10) || 0,
-                                        length: a.details.Length || 'Not specified',
-                                        intent: a.details.Intent || ''
-                                    }))
-                                }));
-                            
-                            // Update global courses array and initialize dashboard
-                            courses = successfulCourses;
+                            // Transform the data structure to match frontend expectations
+                            courses = data.results.filter(c => !c.error).map(c => ({
+                                code: c.code,
+                                title: c.title,
+                                credit_points: c.credit_points,
+                                requisites: c.requisites,
+                                overview: c.overview,
+                                learning_outcomes: c.learning_outcomes,
+                                assessments: (c.assessment || []).map(a => ({
+                                    title: a.title,
+                                    type: getAssessmentType(a),
+                                    groupwork: determineGroupwork(a.details.Groupwork),
+                                    weight: parseInt((a.details.Weight || '0').replace(/%/g, ''), 10) || 0,
+                                    length: a.details.Length || 'Not specified',
+                                    intent: a.details.Intent || '',
+                                    details: a.details || {}
+                                }))
+                            }));
+
                             if (courses.length > 0) {
                                 initializeDashboard();
                             }
@@ -1208,27 +1063,37 @@ Autumn session
                     }
                 }
             }
-            
-            // Show final status
-            status.textContent = `Loaded ${successfulCourses.length} courses` + 
-                (errors.length ? ` (${errors.length} failed)` : '');
-                
         } catch (e) {
             console.error('Fetch error:', e);
             status.textContent = 'Failed to fetch courses';
-            errorsDiv.innerHTML = `<div class="error-item">Network error: ${e.message}</div>`;
+            errorsDiv.innerHTML = `<div class="error-item">Error: ${e.message}</div>`;
         } finally {
-            // Keep errors visible longer if there are any
             setTimeout(() => {
-                if (errors.length === 0) {
-                    spinner.style.display = 'none';
-                } else {
-                    setTimeout(() => {
-                        spinner.style.display = 'none';
-                    }, 3000);
-                }
+                spinner.style.display = 'none';
             }, 500);
         }
+    }
+
+    // Helper function to determine assessment type
+    function getAssessmentType(assessment) {
+        const title = (assessment.title || '').toLowerCase();
+        const details = assessment.details || {};
+        
+        if (title.includes('exam') || details.Type?.toLowerCase().includes('exam')) {
+            return 'Examination';
+        } else if (title.includes('test') || details.Type?.toLowerCase().includes('test')) {
+            return 'Test';
+        } else if (title.includes('quiz') || details.Type?.toLowerCase().includes('quiz')) {
+            return 'Quiz';
+        } else if (title.includes('presentation') || details.Type?.toLowerCase().includes('presentation')) {
+            return 'Presentation';
+        } else if (title.includes('project') || details.Type?.toLowerCase().includes('project')) {
+            return 'Project';
+        } else if (title.includes('assignment') || details.Type?.toLowerCase().includes('assignment')) {
+            return 'Assignment';
+        }
+        
+        return 'Other';
     }
 
     // Helper function to determine groupwork status
@@ -1307,24 +1172,34 @@ Autumn session
         renderCourses();
     }
 
+    // Filter state: Map<filterName, 0|1|-1> (0=neutral, 1=include, -1=exclude)
+    let assessmentTypeFilterState = new Map();
+    let workTypeFilterState = new Map();
+
     function renderFilters() {
-        console.log('renderFilters called with courses:', courses); // Debug log
         const assessmentTypeFilters = document.getElementById('assessmentTypeFilters');
         const workTypeFilters = document.getElementById('workTypeFilters');
+        
+        if (!assessmentTypeFilters || !workTypeFilters || !courses) {
+            console.error('Required elements not found or courses not loaded');
+            return;
+        }
+
         const allAssessmentTypes = new Set();
         const allWorkTypes = new Set();
 
         courses.forEach(course => {
-            course.assessments.forEach(a => {
-                allAssessmentTypes.add(a.type);
-                allWorkTypes.add(a.groupwork);
-            });
+            if (course.assessments) {
+                course.assessments.forEach(a => {
+                    if (a.type) allAssessmentTypes.add(a.type);
+                    if (a.groupwork) allWorkTypes.add(a.groupwork);
+                });
+            }
         });
 
-        console.log('Found assessment types:', Array.from(allAssessmentTypes)); // Debug log
-        console.log('Found work types:', Array.from(allWorkTypes)); // Debug log
-
         function createPill(label, filterMap, container) {
+            if (!label) return;
+            
             let state = filterMap.get(label) || 0;
             const pill = document.createElement('span');
             pill.className = 'filter-pill';
@@ -1339,7 +1214,6 @@ Autumn session
                 pill.appendChild(x);
             }
             pill.addEventListener('click', () => {
-                // Cycle: 0 -> 1 -> -1 -> 0
                 let newState = state === 0 ? 1 : (state === 1 ? -1 : 0);
                 if (newState === 0) filterMap.delete(label);
                 else filterMap.set(label, newState);
@@ -1357,375 +1231,15 @@ Autumn session
 
         assessmentTypeFilters.innerHTML = '';
         Array.from(allAssessmentTypes).sort().forEach(t => createPill(t, assessmentTypeFilterState, assessmentTypeFilters));
+        
         workTypeFilters.innerHTML = '';
         Array.from(allWorkTypes).sort().forEach(w => createPill(w, workTypeFilterState, workTypeFilters));
     }
 
     function renderCourses() {
-        console.log('renderCourses called with courses:', courses); // Debug log
-        const container = document.getElementById('courseContainer');
-        const searchVal = document.getElementById('searchInput').value.toLowerCase();
-        container.innerHTML = '';
-
-        // Returns true if the value is included, false if excluded, or null if neutral
-        function getFilterState(val, map) {
-            if (map.size === 0) return null;
-            if (map.get(val) === 1) return true;
-            if (map.get(val) === -1) return false;
-            return null;
-        }
-
-        // Returns true if the assessment matches all include filters and none of the exclude filters
-        function assessmentMatchesFilters(a) {
-            // Assessment Type
-            const typeState = getFilterState(a.type, assessmentTypeFilterState);
-            if (typeState === false) return false;
-            // Work Type
-            const workState = getFilterState(a.groupwork, workTypeFilterState);
-            if (workState === false) return false;
-
-            // If there are any include filters, must match them
-            if ([...assessmentTypeFilterState.values()].includes(1) && typeState !== true) return false;
-            if ([...workTypeFilterState.values()].includes(1) && workState !== true) return false;
-
-            return true;
-        }
-
-        // Exclude course if ANY assessment matches an exclude filter
-        function courseIsExcluded(course) {
-            // Assessment type excludes
-            const typeExcludes = [...assessmentTypeFilterState.entries()].filter(([k, v]) => v === -1).map(([k]) => k);
-            if (typeExcludes.length > 0 && course.assessments.some(a => typeExcludes.includes(a.type))) return true;
-            // Work type excludes
-            const workExcludes = [...workTypeFilterState.entries()].filter(([k, v]) => v === -1).map(([k]) => k);
-            if (workExcludes.length > 0 && course.assessments.some(a => workExcludes.includes(a.groupwork))) return true;
-            return false;
-        }
-
-        // Only show courses where at least one assessment matches all include filters and none match any exclude filter
-        const filteredCourses = courses.filter(course => {
-            if (searchVal && !(course.name.toLowerCase().includes(searchVal) || course.code.includes(searchVal))) {
-                return false;
-            }
-            if (courseIsExcluded(course)) return false;
-
-            // If there are any include filters, require at least one assessment matches all includes
-            const hasIncludeType = [...assessmentTypeFilterState.values()].includes(1);
-            const hasIncludeWork = [...workTypeFilterState.values()].includes(1);
-            if (hasIncludeType || hasIncludeWork) {
-                return course.assessments.some(a => assessmentMatchesFilters(a));
-            }
-            // If no includes, just require not excluded
-            return true;
-        });
-
-        console.log('Filtered courses:', filteredCourses); // Debug log
-
-        if (filteredCourses.length === 0) {
-            console.log('No courses to display'); // Debug log
-            const empty = document.createElement('div');
-            empty.className = 'empty-state';
-            empty.textContent = 'No courses match the filters.';
-            container.appendChild(empty);
-            return;
-        }
-
-        filteredCourses.forEach(course => {
-            // Determine main work type for background
-            const mainWork = getMainWorkType(course);
-            const card = document.createElement('div');
-            card.className = 'course-card';
-            card.setAttribute('data-work', mainWork);
-
-            const header = document.createElement('div');
-            header.className = 'card-header';
-            header.innerHTML = `<h2>${course.code}</h2><p>${course.name}</p>`;
-
-            const body = document.createElement('div');
-            body.className = 'card-body';
-            
-            // Add prerequisites section
-            const prereqs = document.createElement('div');
-            prereqs.className = 'prerequisites';
-            prereqs.innerHTML = `
-                <p><strong>Prerequisites:</strong> ${course.prerequisites}</p>
-            `;
-            body.appendChild(prereqs);
-            
-            // Add a divider
-            const divider = document.createElement('hr');
-            divider.style.borderTop = '1px solid #eee';
-            divider.style.margin = '10px 0';
-            body.appendChild(divider);
-            
-            // Assessments section
-            const assessmentsTitle = document.createElement('h3');
-            assessmentsTitle.textContent = 'Assessments';
-            assessmentsTitle.style.margin = '0 0 10px 0';
-            assessmentsTitle.style.fontSize = '16px';
-            body.appendChild(assessmentsTitle);
-            
-            course.assessments.forEach(a => {
-                const item = document.createElement('div');
-                item.className = 'assessment-item';
-                
-                // Determine groupwork tag color class
-                let groupworkClass = 'tag-individual';
-                if (a.groupwork.toLowerCase().includes('group')) {
-                    groupworkClass = 'tag-group';
-                }
-                
-                // Neon tag for assessment type
-                const typeTagClass = getTypeTagClass(a.type);
-
-                // Add length next to the intent/description, styled as a subtle pill below or beside
-                item.innerHTML = `
-                    <div class="assessment-header">
-                        <span class="assessment-title">${a.name}</span>
-                        <span class="assessment-weight">${a.weight}%</span>
-                    </div>
-                    <div class="assessment-intent">
-                        <span>${a.intent}</span>
-                        ${a.length && a.length !== 'Not specified' ? `<span class="length-pill subtle">${a.length}</span>` : ''}
-                    </div>
-                    <div class="assessment-details">
-                        <span class="tag ${typeTagClass}">${a.type}</span>
-                        <span class="tag ${groupworkClass}">${a.groupwork}</span>
-                    </div>
-                `;
-                body.appendChild(item);
-            });
-
-            card.appendChild(header);
-            card.appendChild(body);
-            container.appendChild(card);
-        });
-    }
-
-    document.getElementById('clearFilters').addEventListener('click', () => {
-        assessmentTypeFilterState.clear();
-        workTypeFilterState.clear();
-        document.getElementById('searchInput').value = '';
-        renderFilters();
-        renderCourses();
-    });
-
-    document.getElementById('searchInput').addEventListener('input', () => renderCourses());
-
-    // Theme toggle
-    const themeBtn = document.getElementById('themeToggle');
-    function setTheme(dark) {
-        document.body.classList.toggle('dark-theme', dark);
-        themeBtn.textContent = dark ? '☀️ Light' : '🌙 Dark';
-        localStorage.setItem('theme', dark ? 'dark' : 'light');
-    }
-    themeBtn.addEventListener('click', () => {
-        setTheme(!document.body.classList.contains('dark-theme'));
-    });
-    // On load, set theme from localStorage
-    setTheme(localStorage.getItem('theme') === 'dark');
-
-    // Helper: get main assessment type for subject
-    function getMainAssessmentType(course) {
-        if (!course.assessments || course.assessments.length === 0) return '';
-        // Priority: Project > Laboratory/practical > Presentation > Quiz/test > Examination > Other
-        const typeOrder = [
-            "Project", "Laboratory/practical", "Presentation", "Quiz/test", "Examination"
-        ];
-        let found = '';
-        for (const t of typeOrder) {
-            if (course.assessments.some(a => (a.type||'').toLowerCase().includes(t.toLowerCase()))) {
-                found = t;
-                break;
-            }
-        }
-        if (!found) {
-            found = (course.assessments[0].type || 'Other');
-        }
-        return found;
-    }
-    // Helper: get tag class for assessment type
-    function getTypeTagClass(type) {
-        const t = (type||'').toLowerCase();
-        if (t.includes('project')) return 'tag-type tag-project';
-        if (t.includes('lab')) return 'tag-type tag-individual';
-        if (t.includes('presentation')) return 'tag-type tag-presentation';
-        if (t.includes('quiz') || t.includes('test')) return 'tag-type tag-type';
-        if (t.includes('exam')) return 'tag-type tag-exam';
-        return 'tag-type tag-other';
-    }
-    // Helper: get main work type for subject
-    function getMainWorkType(course) {
-        if (!course.assessments || course.assessments.length === 0) return '';
-        // Priority: Group > Presentation > Examination > Individual > Other
-        const workOrder = [
-            "Group", "Presentation", "Examination", "Individual"
-        ];
-        let found = '';
-        for (const t of workOrder) {
-            if (course.assessments.some(a => (a.groupwork||'').toLowerCase().includes(t.toLowerCase()))) {
-                found = t;
-                break;
-            }
-        }
-        if (!found) {
-            found = (course.assessments[0].groupwork || 'Other');
-        }
-        return found;
-    }
-
-    function showCourseDetail(course) {
-        const modal = document.getElementById('courseDetailModal');
-        const content = document.getElementById('modalContent');
-        
-        let html = `
-            <div class="modal-header">
-                <h2>${course.code} - ${course.title}</h2>
-                <p>${course.credit_points}</p>
-            </div>
-        `;
-
-        // Overview section
-        if (course.overview) {
-            html += `
-                <div class="detail-section">
-                    <h3>Overview</h3>
-                    <p>${course.overview}</p>
-                </div>
-            `;
-        }
-
-        // Prerequisites
-        if (course.requisites) {
-            html += `
-                <div class="detail-section">
-                    <h3>Prerequisites</h3>
-                    <p>${course.requisites}</p>
-                </div>
-            `;
-        }
-
-        // Learning Outcomes
-        if (course.learning_outcomes && course.learning_outcomes.length > 0) {
-            html += `
-                <div class="detail-section">
-                    <h3>Learning Outcomes</h3>
-                    <ul class="detail-list">
-                        ${course.learning_outcomes.map(lo => 
-                            `<li>${lo.no}. ${lo.text}</li>`
-                        ).join('')}
-                    </ul>
-                </div>
-            `;
-        }
-
-        // Assessment Details
-        if (course.assessment && course.assessment.length > 0) {
-            html += `
-                <div class="detail-section">
-                    <h3>Assessment Tasks</h3>
-                    <div class="detail-grid">
-                        ${course.assessment.map(task => `
-                            <div class="assessment-detail">
-                                <h4>${task.title}</h4>
-                                <ul class="detail-list">
-                                    ${Object.entries(task.details).map(([key, value]) => 
-                                        `<li><strong>${key}:</strong> ${value}</li>`
-                                    ).join('')}
-                                </ul>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        content.innerHTML = html;
-        modal.style.display = 'block';
-    }
-
-    function closeModal() {
-        const modal = document.getElementById('courseDetailModal');
-        modal.style.display = 'none';
-    }
-
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        const modal = document.getElementById('courseDetailModal');
-        if (event.target === modal) {
-            closeModal();
-        }
-    }
-
-    function renderCourses(coursesToRender) {
         const container = document.getElementById('cardContainer');
-        
-        if (!coursesToRender || coursesToRender.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-inbox"></i>
-                    <h3>No courses found</h3>
-                    <p>Try adjusting your filters or importing some courses</p>
-                </div>
-            `;
-            return;
-        }
-        
-        container.innerHTML = coursesToRender.map(course => {
-            let totalWeight = 0;
-            const assessments = course.assessment.map(task => {
-                const weight = parseInt(task.details.Weight) || 0;
-                totalWeight += weight;
-                return `
-                    <div class="assessment-item" onclick="showCourseDetail(${JSON.stringify(course)})">
-                        <div class="assessment-header">
-                            <span class="assessment-title">${task.title}</span>
-                            <span class="assessment-weight">${task.details.Weight || '0%'}</span>
-                        </div>
-                        <div class="assessment-intent">${task.details.Intent || 'No description available'}</div>
-                        <div class="assessment-details">
-                            <span class="tag tag-type">${task.details['Objective(s)'] ? 'Objectives' : 'No objectives'}</span>
-                            <span class="tag ${task.details.Groupwork?.toLowerCase().includes('group') ? 'tag-group' : 'tag-individual'}">
-                                ${task.details.Groupwork || 'Individual'}
-                            </span>
-                            <span class="length-pill">${task.details.Length || 'Duration not specified'}</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            return `
-                <div class="course-card" data-code="${course.code}">
-                    <div class="card-header" onclick="showCourseDetail(${JSON.stringify(course)})">
-                        <h2>${course.code} - ${course.title}</h2>
-                        <p>${course.credit_points} - ${totalWeight}% Total Weight</p>
-                    </div>
-                    <div class="card-body">
-                        <div class="prerequisites">
-                            <strong>Prerequisites:</strong> ${course.requisites || 'None'}
-                        </div>
-                        ${assessments}
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    function updateLoadingProgress(completed, total, code) {
-        const progressBar = document.querySelector('.loading-spinner .progress-bar');
-        const statusText = document.getElementById('loadingStatus');
-        
-        if (progressBar && statusText) {
-            const percentage = (completed / total) * 100;
-            progressBar.style.width = `${percentage}%`;
-            statusText.textContent = `Loading ${code}... (${completed}/${total})`;
-        }
-    }
-
-    function renderCourses() {
-        const container = document.getElementById('cardContainer');
-        if (!container) {
-            console.error('Could not find card container element');
+        if (!container || !courses) {
+            console.error('Required elements not found');
             return;
         }
 
@@ -1745,9 +1259,9 @@ Autumn session
         // Filter courses based on search and other criteria
         const filteredCourses = courses.filter(course => {
             if (searchVal && !(
-                (course.title || '').toLowerCase().includes(searchVal) || 
-                (course.code || '').includes(searchVal))
-            ) {
+                course.title.toLowerCase().includes(searchVal) || 
+                course.code.includes(searchVal)
+            )) {
                 return false;
             }
             return true;
@@ -1767,34 +1281,30 @@ Autumn session
         container.innerHTML = filteredCourses.map(course => {
             // Calculate total weight and format assessments
             let totalWeight = 0;
-            const assessments = (course.assessment || []).map(task => {
-                const weight = parseInt(task.details?.Weight?.replace('%', '') || '0', 10);
-                totalWeight += weight;
+            const assessmentHtml = course.assessments.map(task => {
+                totalWeight += task.weight;
                 
-                const groupworkTag = task.details?.Groupwork?.toLowerCase().includes('group') ? 
+                const groupworkTag = task.groupwork.toLowerCase().includes('group') ? 
                     'tag-group' : 'tag-individual';
                 
                 return `
                     <div class="assessment-item" onclick="showCourseDetail(${JSON.stringify(course)})">
                         <div class="assessment-header">
-                            <span class="assessment-title">${task.title || 'Untitled Assessment'}</span>
-                            <span class="assessment-weight">${weight}%</span>
+                            <span class="assessment-title">${task.title}</span>
+                            <span class="assessment-weight">${task.weight}%</span>
                         </div>
-                        <div class="assessment-intent">${task.details?.Intent || 'No description available'}</div>
+                        <div class="assessment-intent">${task.intent}</div>
                         <div class="assessment-details">
-                            <span class="tag tag-type">${task.details?.['Objective(s)'] ? 'Objectives' : 'No objectives'}</span>
-                            <span class="tag ${groupworkTag}">${task.details?.Groupwork || 'Individual'}</span>
-                            <span class="length-pill">${task.details?.Length || 'Duration not specified'}</span>
+                            <span class="tag tag-type">${task.type}</span>
+                            <span class="tag ${groupworkTag}">${task.groupwork}</span>
+                            ${task.length ? `<span class="length-pill">${task.length}</span>` : ''}
                         </div>
                     </div>
                 `;
             }).join('');
 
-            // Determine primary assessment type for card styling
-            const primaryType = getPrimaryAssessmentType(course.assessment);
-
             return `
-                <div class="course-card" data-code="${course.code}" data-type="${primaryType}">
+                <div class="course-card" data-code="${course.code}">
                     <div class="card-header" onclick="showCourseDetail(${JSON.stringify(course)})">
                         <h2>${course.code} - ${course.title}</h2>
                         <p>${course.credit_points} - ${totalWeight}% Total Weight</p>
@@ -1803,31 +1313,13 @@ Autumn session
                         <div class="prerequisites">
                             <strong>Prerequisites:</strong> ${course.requisites || 'None'}
                         </div>
-                        ${assessments}
+                        ${assessmentHtml}
                     </div>
                 </div>
             `;
         }).join('');
     }
 
-    // Helper function to determine primary assessment type
-    function getPrimaryAssessmentType(assessments) {
-        if (!assessments || assessments.length === 0) return 'other';
-        
-        const typeOrder = ['final exam', 'project', 'presentation', 'assignment', 'quiz'];
-        
-        for (const type of typeOrder) {
-            const found = assessments.find(a => 
-                (a.title || '').toLowerCase().includes(type) ||
-                (a.details?.Type || '').toLowerCase().includes(type)
-            );
-            if (found) return type.replace(' ', '-');
-        }
-        
-        return 'other';
-    }
-
-    // Update the showCourseDetail function to handle the data format
     function showCourseDetail(course) {
         const modal = document.getElementById('courseDetailModal');
         if (!modal) return;
@@ -1901,97 +1393,41 @@ Autumn session
         modal.style.display = 'block';
     }
 
-    // Update the data processing in fetchAndInit
-    async function fetchAndInit(codes) {
-        // ...existing warmup and initialization code...
+    function closeModal() {
+        const modal = document.getElementById('courseDetailModal');
+        modal.style.display = 'none';
+    }
 
-        try {
-            const spinner = document.getElementById('loadingSpinner');
-            const status = document.getElementById('loadingStatus');
-            const progress = document.getElementById('loadingProgress');
-            const errorsDiv = document.getElementById('loadingErrors');
-            
-            if (!spinner || !status || !progress || !errorsDiv) {
-                console.error('Required UI elements not found');
-                return;
-            }
-            
-            spinner.style.display = 'block';
-            progress.style.width = '0%';
-            errorsDiv.innerHTML = '';
-            
-            // Ensure backend is warmed up
-            if (!isWarmedUp) {
-                const warmedUp = await warmupBackend();
-                if (!warmedUp) return;
-            }
-
-            const response = await fetch(`${BACKEND_URL}/api/courses`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ subject_codes: codes })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            let completed = 0;
-            let total = codes.length;
-
-            while (true) {
-                const {value, done} = await reader.read();
-                if (done) break;
-                
-                buffer += decoder.decode(value, {stream: true});
-                const lines = buffer.split('\n');
-                buffer = lines.pop(); // Keep incomplete line in buffer
-                
-                for (const line of lines) {
-                    if (!line.trim()) continue;
-                    try {
-                        const data = JSON.parse(line);
-                        
-                        if (data.type === 'progress') {
-                            completed = data.completed;
-                            total = data.total;
-                            const percentage = Math.round((completed / total) * 100);
-                            progress.style.width = `${percentage}%`;
-                            status.textContent = `Processing ${data.code}... (${completed}/${total})`;
-                            
-                            if (data.error) {
-                                errorsDiv.innerHTML += `<div class="error-item">${data.code}: ${data.error}</div>`;
-                            }
-                        }
-                        else if (data.type === 'complete') {
-                            courses = data.results.filter(c => !c.error);
-                            if (courses.length > 0) {
-                                initializeDashboard();
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Error processing message:', e, 'Line:', line);
-                    }
-                }
-            }
-        } catch (e) {
-            console.error('Fetch error:', e);
-            const status = document.getElementById('loadingStatus');
-            const errorsDiv = document.getElementById('loadingErrors');
-            if (status) status.textContent = 'Failed to fetch courses';
-            if (errorsDiv) errorsDiv.innerHTML = `<div class="error-item">Error: ${e.message}</div>`;
-        } finally {
-            const spinner = document.getElementById('loadingSpinner');
-            if (spinner) {
-                setTimeout(() => {
-                    spinner.style.display = 'none';
-                }, 500);
-            }
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('courseDetailModal');
+        if (event.target === modal) {
+            closeModal();
         }
     }
+
+    // Theme toggle
+    const themeBtn = document.getElementById('themeToggle');
+    function setTheme(dark) {
+        document.body.classList.toggle('dark-theme', dark);
+        themeBtn.textContent = dark ? '☀️ Light' : '🌙 Dark';
+        localStorage.setItem('theme', dark ? 'dark' : 'light');
+    }
+    themeBtn.addEventListener('click', () => {
+        setTheme(!document.body.classList.contains('dark-theme'));
+    });
+    // On load, set theme from localStorage
+    setTheme(localStorage.getItem('theme') === 'dark');
+
+    document.getElementById('clearFilters').addEventListener('click', () => {
+        assessmentTypeFilterState.clear();
+        workTypeFilterState.clear();
+        document.getElementById('searchInput').value = '';
+        renderFilters();
+        renderCourses();
+    });
+
+    document.getElementById('searchInput').addEventListener('input', () => renderCourses());
     </script>
 </body>
 </html>
