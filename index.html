@@ -850,7 +850,7 @@ Autumn session
         
         spinner.style.display = 'block';
         progress.style.width = '0%';
-        progress.style.transition = 'width 0.5s ease-out';
+        progress.style.transition = 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
         errorsDiv.innerHTML = '';
         let errors = [];
         let successfulCourses = [];
@@ -869,7 +869,6 @@ Autumn session
             const reader = resp.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
-            let lastPercentage = 0;
 
             while (true) {
                 const {value, done} = await reader.read();
@@ -885,23 +884,14 @@ Autumn session
                         const data = JSON.parse(line);
                         
                         if (data.type === 'progress') {
-                            // Calculate percentage
+                            // Calculate percentage and update progress bar
                             const percentage = Math.round((data.current / data.total) * 100);
-                            
-                            // Only update if percentage has increased
-                            if (percentage > lastPercentage) {
-                                lastPercentage = percentage;
-                                requestAnimationFrame(() => {
-                                    progress.style.width = `${percentage}%`;
-                                });
-                            }
+                            requestAnimationFrame(() => {
+                                progress.style.width = `${percentage}%`;
+                            });
                             
                             // Update status message
-                            if (data.status === 'fetching') {
-                                status.textContent = `Fetching ${data.code} (${data.current}/${data.total})`;
-                            } else {
-                                status.textContent = `Processed ${data.code} (${data.current + 1}/${data.total})`;
-                            }
+                            status.textContent = `Processed ${data.current} of ${data.total} courses`;
                             
                             if (data.status === 'error') {
                                 errors.push(`${data.code}: ${data.error || 'Failed to fetch'}`);
@@ -928,7 +918,7 @@ Autumn session
                                     }))
                                 }));
                             
-                            // Update global courses array and initialize dashboard
+                            // Update courses and initialize dashboard
                             courses = successfulCourses;
                             if (courses.length > 0) {
                                 initializeDashboard();
@@ -949,16 +939,9 @@ Autumn session
             status.textContent = 'Failed to fetch courses';
             errorsDiv.innerHTML = `<div class="error-item">Network error: ${e.message}</div>`;
         } finally {
-            // Keep errors visible longer if there are any
             setTimeout(() => {
-                if (errors.length === 0) {
-                    spinner.style.display = 'none';
-                } else {
-                    setTimeout(() => {
-                        spinner.style.display = 'none';
-                    }, 3000);
-                }
-            }, 500);
+                spinner.style.display = errors.length > 0 ? 'block' : 'none';
+            }, errors.length > 0 ? 3000 : 500);
         }
     }
 
