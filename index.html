@@ -678,11 +678,11 @@
             z-index: 999;
         }
         .progress-container {
-            width: 100%;
+            width: 300px;
             height: 4px;
             background: #eee;
             border-radius: 2px;
-            margin: 10px 0;
+            margin: 0 auto;
             overflow: hidden;
         }
         .dark-theme .progress-container {
@@ -703,6 +703,15 @@
         .dark-theme .import-help {
             color: #b0b8c1;
         }
+        .loading-status {
+            font-size: 14px;
+            color: #64748b;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+        .dark-theme .loading-status {
+            color: #94a3b8;
+        }
     </style>
 </head>
 <body>
@@ -715,7 +724,10 @@
         
         <div class="loading-spinner" id="loadingSpinner">
             <div class="spinner"></div>
-            <p style="margin-top: 15px; color: #64748b;">Loading your courses...</p>
+            <p class="loading-status" id="loadingStatus" style="margin-top: 15px; color: #64748b;">Loading your courses...</p>
+            <div class="progress-container" style="margin-top: 20px;">
+                <div class="progress-bar" id="loadingProgress"></div>
+            </div>
         </div>
         
         <div class="controls">
@@ -779,30 +791,39 @@ Autumn session
 
     async function fetchAndInit(codes) {
         const spinner = document.getElementById('loadingSpinner');
+        const status = document.getElementById('loadingStatus');
+        const progress = document.getElementById('loadingProgress');
         spinner.style.display = '';
+        
         try {
             const resp = await fetch(`${BACKEND_URL}/api/courses`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ subject_codes: codes })
             });
+
             const raw = await resp.json();
-            courses = raw.map(c => ({
-                code: c.code,
-                name: c.title,
-                prerequisites: c.requisites || "None specified",
-                assessments: c.assessment.map(a => {
-                    // Based on the actual JSON structure you provided
-                    return {
+            let processed = 0;
+            courses = raw.map(c => {
+                processed++;
+                // Update loading status and progress bar
+                status.textContent = `Loading ${c.code || 'course'} (${processed}/${codes.length})`;
+                progress.style.width = `${(processed / codes.length) * 100}%`;
+                
+                return {
+                    code: c.code,
+                    name: c.title,
+                    prerequisites: c.requisites || "None specified",
+                    assessments: c.assessment.map(a => ({
                         name: a.title,
                         type: a.details['Type'] || 'Unknown',
                         groupwork: a.details['Groupwork'] || 'Individual',
                         weight: Number((a.details['Weight']||'0').replace('%','')) || 0,
                         length: a.details['Length'] || 'Not specified',
                         intent: a.details['Intent'] || ''
-                    };
-                })
-            }));
+                    }))
+                };
+            });
             initializeDashboard();
         } catch (e) {
             alert('Failed to fetch courses.');
