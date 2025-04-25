@@ -868,7 +868,6 @@ Autumn session
             const reader = resp.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
-            let lastProgressPercentage = 0;
 
             while (true) {
                 const {value, done} = await reader.read();
@@ -884,22 +883,18 @@ Autumn session
                         const data = JSON.parse(line);
                         
                         if (data.type === 'progress') {
-                            // Calculate percentage based on steps
+                            // Calculate percentage based on completed/total
                             const percentage = Math.round((data.current / data.total) * 100);
                             
-                            // Ensure progress never goes backwards
-                            if (percentage > lastProgressPercentage) {
-                                lastProgressPercentage = percentage;
-                                // Add transition for smooth animation
-                                progress.style.transition = 'width 0.3s ease-out';
-                                progress.style.width = `${percentage}%`;
-                            }
+                            // Update progress bar smoothly
+                            progress.style.transition = 'width 0.3s ease-out';
+                            progress.style.width = `${percentage}%`;
                             
-                            // Update status message
+                            // Update status message with fraction
                             if (data.status === 'fetching') {
-                                status.textContent = `Fetching ${data.code}...`;
+                                status.textContent = `Fetching ${data.code} (${data.current}/${data.total})`;
                             } else {
-                                status.textContent = `Processing ${data.code}...`;
+                                status.textContent = `Processed ${data.code} (${data.current}/${data.total})`;
                             }
                             
                             if (data.status === 'error') {
