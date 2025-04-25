@@ -902,7 +902,7 @@
         .overview-preview {
             font-size: 0.95rem;
             line-height: 1.7;
-            color: var(--text);
+            color: var (--text);
             margin-bottom: 20px;
             padding: 20px;
             background: var(--prereq-bg);
@@ -1710,6 +1710,14 @@ Autumn session
             // Add click handlers to course cards
             const cards = document.querySelectorAll('.course-card');
             cards.forEach(card => {
+                // Define handlers first
+                const handleKeyPress = (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleClick();
+                    }
+                };
+
                 const handleClick = () => {
                     try {
                         const courseData = JSON.parse(card.getAttribute('data-course'));
@@ -1719,20 +1727,12 @@ Autumn session
                     }
                 };
 
-                // Remove any existing event listeners
+                // Remove any existing event listeners first
                 card.removeEventListener('click', handleClick);
                 card.removeEventListener('keydown', handleKeyPress);
 
-                // Add click handler
+                // Add new event listeners
                 card.addEventListener('click', handleClick);
-
-                // Add keyboard handler
-                const handleKeyPress = (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleClick();
-                    }
-                };
                 card.addEventListener('keydown', handleKeyPress);
             });
 
