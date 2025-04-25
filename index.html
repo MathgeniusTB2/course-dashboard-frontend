@@ -1002,6 +1002,55 @@
         .dark-theme .overview-content-category {
             color: #e3e8f0;
         }
+
+        .overview-section {
+            background: var(--prereq-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .overview-section h3 {
+            color: var(--accent);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(52, 152, 219, 0.2);
+        }
+
+        .objectives-list, .outcomes-list {
+            padding-left: 25px;
+            margin: 15px 0;
+        }
+
+        .objectives-list li, .outcomes-list li {
+            margin-bottom: 10px;
+            line-height: 1.6;
+            padding-left: 10px;
+        }
+
+        .assessment-task {
+            background: rgba(52, 152, 219, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid var(--accent);
+        }
+
+        .overview-paragraph {
+            line-height: 1.8;
+            margin-bottom: 1.2em;
+            color: var(--text);
+        }
+
+        .dark-theme .overview-section {
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .dark-theme .assessment-task {
+            background: rgba(52, 152, 219, 0.15);
+        }
     </style>
 </head>
 <body>
@@ -1291,47 +1340,102 @@ Autumn session
     }
 
     function formatOverviewContent(overview) {
-        // If overview is a string, format it directly
-        if (typeof overview === 'string') {
-            return overview.split(/\n\n+/).map(p => 
-                `<p class="overview-paragraph">${p.trim().replace(/\n/g, '<br>')}</p>`
-            ).join('');
-        }
+        if (!overview) return '<p>No overview available</p>';
         
-        // If overview is an object, format each section
+        // If overview is an object, use its properties
         if (typeof overview === 'object' && overview !== null) {
-            let html = '';
-            
-            // Format description section if available
-            if (overview.description) {
-                html += `
-                    <div class="overview-section-category">
-                        <h4><i class="fas fa-info-circle"></i> Course Description</h4>
-                        <div class="overview-content-category">
-                            ${overview.description.split(/\n\n+/).map(p => 
-                                `<p class="overview-paragraph">${p.trim().replace(/\n/g, '<br>')}</p>`
-                            ).join('')}
-                        </div>
-                    </div>`;
-            }
-            
-            // Format topics if available
-            if (Array.isArray(overview.topics) && overview.topics.length > 0) {
-                html += `
-                    <div class="overview-section-category">
-                        <h4><i class="fas fa-list"></i> Key Topics</h4>
-                        <div class="overview-content-category">
-                            <ul class="topics-list">
-                                ${overview.topics.map(topic => `<li>${topic}</li>`).join('')}
-                            </ul>
-                        </div>
-                    </div>`;
-            }
-            
-            return html || '<p class="overview-paragraph">No overview available</p>';
+            return formatOverviewObject(overview);
         }
         
-        return '<p class="overview-paragraph">No overview available</p>';
+        // If overview is a string, parse and structure it
+        return formatOverviewText(overview);
+    }
+
+    function formatOverviewObject(overview) {
+        let html = '';
+        
+        // Main Description
+        if (overview.description) {
+            html += `
+                <div class="overview-section">
+                    <h3><i class="fas fa-info-circle"></i> Course Description</h3>
+                    <div class="overview-content">
+                        ${formatParagraphs(overview.description)}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Learning Objectives
+        if (overview.slos && overview.slos.length > 0) {
+            html += `
+                <div class="overview-section">
+                    <h3><i class="fas fa-bullseye"></i> Subject Learning Objectives (SLOs)</h3>
+                    <ol class="objectives-list">
+                        ${overview.slos.map(slo => `<li>${slo}</li>`).join('')}
+                    </ol>
+                </div>
+            `;
+        }
+
+        return html;
+    }
+
+    function formatOverviewText(text) {
+        const sections = text.split(/(?=\n[A-Z][A-Za-z ]+:|Subject learning objectives|Course intended learning outcomes)/g);
+        
+        return sections.map(section => {
+            const [header, ...content] = section.split('\n');
+            const cleanedHeader = header.replace(':', '').trim();
+            if (!cleanedHeader) return '';
+            
+            const contentStr = content.join('\n').trim();
+            return `
+                <div class="overview-section">
+                    <h3><i class="${getSectionIcon(cleanedHeader)}"></i> ${cleanedHeader}</h3>
+                    <div class="overview-content">
+                        ${formatSectionContent(cleanedHeader, contentStr)}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function formatSectionContent(header, content) {
+        if (!content) return '';
+        
+        if (header.includes('Learning Objectives') || header.includes('SLOs')) {
+            return `<ol class="objectives-list">${content.split(/\d+\./).filter(Boolean).map(item => 
+                `<li>${item.trim()}</li>`).join('')}</ol>`;
+        }
+        
+        if (header.includes('CILOs')) {
+            return `<ul class="outcomes-list">${content.split('\n').filter(Boolean).map(item => 
+                `<li>${item.trim()}</li>`).join('')}</ul>`;
+        }
+
+        return formatParagraphs(content);
+    }
+
+    function formatParagraphs(text) {
+        if (!text) return '';
+        return text.split(/\n{2,}/)
+            .filter(Boolean)
+            .map(para => `<p class="overview-paragraph">${para.trim().replace(/\n/g, '<br>')}</p>`)
+            .join('');
+    }
+
+    function getSectionIcon(header) {
+        const icons = {
+            'Subject learning objectives': 'fas fa-bullseye',
+            'Course intended learning outcomes': 'fas fa-graduation-cap',
+            'Assessment': 'fas fa-clipboard-check',
+            'Content': 'fas fa-book-open',
+            'Teaching': 'fas fa-chalkboard-teacher',
+            'References': 'fas fa-book'
+        };
+        
+        return Object.entries(icons).find(([key]) => header.includes(key))?.[1] || 'fas fa-info-circle';
     }
 
     // Filter state
