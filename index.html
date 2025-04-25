@@ -893,7 +893,7 @@
             </div>
         </div>
         
-        <div class="card-container" id="courseContainer">
+        <div class="card-container" id="cardContainer">
             <!-- Cards will be populated here -->
         </div>
     </div>
@@ -1168,6 +1168,20 @@ Autumn session
     }
 
     function initializeDashboard() {
+        const assessmentTypeFilters = document.getElementById('assessmentTypeFilters');
+        const workTypeFilters = document.getElementById('workTypeFilters');
+        const cardContainer = document.getElementById('cardContainer');
+        
+        if (!assessmentTypeFilters || !workTypeFilters || !cardContainer) {
+            console.error('Required dashboard elements not found. Check that all element IDs exist in HTML.');
+            return;
+        }
+
+        if (!courses || !Array.isArray(courses)) {
+            console.error('No course data available');
+            return;
+        }
+
         renderFilters();
         renderCourses();
     }
@@ -1238,8 +1252,8 @@ Autumn session
 
     function renderCourses() {
         const container = document.getElementById('cardContainer');
-        if (!container || !courses) {
-            console.error('Required elements not found');
+        if (!container) {
+            console.error('Card container element not found. Ensure element with ID "cardContainer" exists.');
             return;
         }
 
@@ -1258,10 +1272,12 @@ Autumn session
 
         // Filter courses based on search and other criteria
         const filteredCourses = courses.filter(course => {
+            if (!course) return false;
+            
             if (searchVal && !(
-                course.title.toLowerCase().includes(searchVal) || 
-                course.code.includes(searchVal)
-            )) {
+                (course.title || '').toLowerCase().includes(searchVal) || 
+                (course.code || '').includes(searchVal))
+            ) {
                 return false;
             }
             return true;
@@ -1278,46 +1294,64 @@ Autumn session
             return;
         }
 
-        container.innerHTML = filteredCourses.map(course => {
-            // Calculate total weight and format assessments
-            let totalWeight = 0;
-            const assessmentHtml = course.assessments.map(task => {
-                totalWeight += task.weight;
-                
-                const groupworkTag = task.groupwork.toLowerCase().includes('group') ? 
-                    'tag-group' : 'tag-individual';
-                
-                return `
-                    <div class="assessment-item" onclick="showCourseDetail(${JSON.stringify(course)})">
-                        <div class="assessment-header">
-                            <span class="assessment-title">${task.title}</span>
-                            <span class="assessment-weight">${task.weight}%</span>
+        try {
+            container.innerHTML = filteredCourses.map(course => {
+                if (!course || !course.assessments) {
+                    console.warn('Invalid course data:', course);
+                    return '';
+                }
+
+                // Calculate total weight and format assessments
+                let totalWeight = 0;
+                const assessmentHtml = course.assessments.map(task => {
+                    if (!task) return '';
+                    
+                    totalWeight += task.weight || 0;
+                    
+                    const groupworkTag = task.groupwork?.toLowerCase().includes('group') ? 
+                        'tag-group' : 'tag-individual';
+                    
+                    return `
+                        <div class="assessment-item" onclick="showCourseDetail(${JSON.stringify(course)})">
+                            <div class="assessment-header">
+                                <span class="assessment-title">${task.title || 'Untitled Assessment'}</span>
+                                <span class="assessment-weight">${task.weight || 0}%</span>
+                            </div>
+                            <div class="assessment-intent">${task.intent || 'No description available'}</div>
+                            <div class="assessment-details">
+                                <span class="tag tag-type">${task.type || 'Other'}</span>
+                                <span class="tag ${groupworkTag}">${task.groupwork || 'Individual'}</span>
+                                ${task.length ? `<span class="length-pill">${task.length}</span>` : ''}
+                            </div>
                         </div>
-                        <div class="assessment-intent">${task.intent}</div>
-                        <div class="assessment-details">
-                            <span class="tag tag-type">${task.type}</span>
-                            <span class="tag ${groupworkTag}">${task.groupwork}</span>
-                            ${task.length ? `<span class="length-pill">${task.length}</span>` : ''}
+                    `;
+                }).join('');
+
+                return `
+                    <div class="course-card" data-code="${course.code}">
+                        <div class="card-header" onclick="showCourseDetail(${JSON.stringify(course)})">
+                            <h2>${course.code} - ${course.title}</h2>
+                            <p>${course.credit_points} - ${totalWeight}% Total Weight</p>
+                        </div>
+                        <div class="card-body">
+                            <div class="prerequisites">
+                                <strong>Prerequisites:</strong> ${course.requisites || 'None'}
+                            </div>
+                            ${assessmentHtml}
                         </div>
                     </div>
                 `;
             }).join('');
-
-            return `
-                <div class="course-card" data-code="${course.code}">
-                    <div class="card-header" onclick="showCourseDetail(${JSON.stringify(course)})">
-                        <h2>${course.code} - ${course.title}</h2>
-                        <p>${course.credit_points} - ${totalWeight}% Total Weight</p>
-                    </div>
-                    <div class="card-body">
-                        <div class="prerequisites">
-                            <strong>Prerequisites:</strong> ${course.requisites || 'None'}
-                        </div>
-                        ${assessmentHtml}
-                    </div>
+        } catch (error) {
+            console.error('Error rendering courses:', error);
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Error rendering courses</h3>
+                    <p>There was a problem displaying the courses. Please try refreshing the page.</p>
                 </div>
             `;
-        }).join('');
+        }
     }
 
     function showCourseDetail(course) {
