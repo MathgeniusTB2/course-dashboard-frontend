@@ -905,17 +905,23 @@ Autumn session
                             .filter(c => !c.error)
                             .map(c => ({
                                 code: c.code,
-                                name: c.title,
+                                name: c.title || '',  // Added fallback
                                 prerequisites: c.requisites || "None specified",
-                                assessments: c.assessment.map(a => ({
-                                    name: a.title,
-                                    type: a.details['Type'] || 'Unknown',
-                                    groupwork: a.details['Groupwork'] || 'Individual',
-                                    weight: Number((a.details['Weight']||'0').replace('%','')) || 0,
-                                    length: a.details['Length'] || 'Not specified',
-                                    intent: a.details['Intent'] || ''
+                                assessments: (c.assessment || []).map(a => ({
+                                    name: a.title || '',
+                                    type: (a.details && a.details['Type']) || 'Unknown',
+                                    groupwork: determineGroupwork(a.details && a.details['Groupwork']),
+                                    weight: Number(((a.details && a.details['Weight']) || '0').replace('%','')) || 0,
+                                    length: (a.details && a.details['Length']) || 'Not specified',
+                                    intent: (a.details && a.details['Intent']) || ''
                                 }))
                             }));
+
+                        // Update courses with successful ones
+                        if (successfulCourses.length > 0) {
+                            courses = successfulCourses;
+                            initializeDashboard();  // Make sure we call this to render the courses
+                        }
                     }
                 }
             }
