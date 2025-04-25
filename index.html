@@ -1163,9 +1163,7 @@ Autumn session
                     <div class="detail-section overview-section">
                         <h3><i class="fas fa-info-circle"></i> Course Overview</h3>
                         <div class="overview-content">
-                            ${typeof course.overview === 'string' ? 
-                                formatOverviewText(course.overview) :
-                                formatOverviewObject(course.overview)}
+                            ${formatOverviewContent(course.overview)}
                         </div>
                     </div>
                 `;
@@ -1184,9 +1182,9 @@ Autumn session
             // Learning Outcomes section
             if (course.learning_outcomes?.length > 0) {
                 // Remove duplicate learning outcomes
-                const uniqueOutcomes = course.learning_outcomes.filter((outcome, index, self) =>
-                    index === self.findIndex(o => o.no === outcome.no && o.text === outcome.text)
-                );
+                const uniqueOutcomes = Array.from(new Map(
+                    course.learning_outcomes.map(o => [`${o.no}-${o.text}`, o])
+                ).values());
                 
                 html += `
                     <div class="detail-section">
@@ -1243,7 +1241,7 @@ Autumn session
             modal.removeEventListener('click', handleClickOutside);
             document.removeEventListener('keydown', handleEscape);
 
-            // Add event listeners
+            // Add new event listeners
             modal.addEventListener('click', handleClickOutside);
             document.addEventListener('keydown', handleEscape);
 
@@ -1253,72 +1251,87 @@ Autumn session
                 document.removeEventListener('keydown', handleEscape);
                 modal.removeEventListener('hide', cleanup);
             };
-            
             modal.addEventListener('hide', cleanup);
 
         } catch (error) {
             console.error('Error showing course details:', error);
+            content.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p>Sorry, there was an error displaying the course details.</p>
+                </div>`;
         }
     }
 
-    function formatOverviewText(text) {
+    function formatOverviewContent(overview) {
+        // If overview is a string, format it directly
+        if (typeof overview === 'string') {
+            return formatTextContent(overview);
+        }
+        
+        // If overview is an object, format each section
+        if (typeof overview === 'object' && overview !== null) {
+            let html = '';
+            
+            // Format description section
+            if (overview.description) {
+                html += `
+                    <div class="overview-section-category">
+                        <h4><i class="fas fa-info-circle"></i> Description</h4>
+                        <div class="overview-content-category">
+                            ${formatTextContent(overview.description)}
+                        </div>
+                    </div>`;
+            }
+
+            // Format topics section
+            if (overview.topics && Array.isArray(overview.topics)) {
+                html += `
+                    <div class="overview-section-category">
+                        <h4><i class="fas fa-list"></i> Key Topics</h4>
+                        <div class="overview-content-category">
+                            <ul class="topics-list">
+                                ${overview.topics.map(topic => `<li>${topic}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>`;
+            }
+
+            // Format teaching strategies section
+            if (overview.teaching_strategies) {
+                const strategies = Array.isArray(overview.teaching_strategies) ? 
+                    overview.teaching_strategies : 
+                    overview.teaching_strategies.split('\n').filter(s => s.trim());
+
+                if (strategies.length > 0) {
+                    html += `
+                        <div class="overview-section-category">
+                            <h4><i class="fas fa-chalkboard-teacher"></i> Teaching Strategies</h4>
+                            <div class="overview-content-category">
+                                <ul class="strategy-list">
+                                    ${strategies.map(strategy => `<li>${strategy}</li>`).join('')}
+                                </ul>
+                            </div>
+                        </div>`;
+                }
+            }
+            
+            return html || '<p>No overview available</p>';
+        }
+        
+        return '<p>No overview available</p>';
+    }
+
+    function formatTextContent(text) {
         if (!text || typeof text !== 'string') return '';
         
-        // Split text into paragraphs and apply formatting
-        return text.split(/\n{2,}/)
+        // Split text into paragraphs
+        const paragraphs = text.split(/\n{2,}/)
             .map(p => p.trim())
             .filter(p => p)
-            .map(p => `<p class="overview-paragraph">${p.replace(/\n/g, '<br>')}</p>`)
-            .join('\n');
-    }
-
-    function formatOverviewObject(overview) {
-        if (!overview) return '';
-        
-        let html = '';
-        
-        // Description Section
-        if (overview.description) {
-            html += `
-                <div class="overview-section-category">
-                    <h4><i class="fas fa-info-circle"></i> Course Description</h4>
-                    <div class="overview-content-category">
-                        <p class="overview-paragraph">${formatOverviewText(overview.description)}</p>
-                    </div>
-                </div>`;
-        }
-
-        // Topics Section
-        if (overview.topics && overview.topics.length > 0) {
-            html += `
-                <div class="overview-section-category">
-                    <h4><i class="fas fa-list"></i> Key Topics</h4>
-                    <div class="overview-content-category">
-                        <ul class="topics-list">
-                            ${overview.topics.map(topic => `<li>${topic}</li>`).join('')}
-                        </ul>
-                    </div>
-                </div>`;
-        }
-
-        // Teaching Strategies Section
-        if (overview.teaching_strategies && overview.teaching_strategies.length > 0) {
-            const strategies = Array.isArray(overview.teaching_strategies) ? 
-                overview.teaching_strategies : 
-                overview.teaching_strategies.split('\n').filter(s => s.trim());
-
-            html += `
-                <div class="overview-section-category">
-                    <h4><i class="fas fa-chalkboard-teacher"></i> Teaching Strategies</h4>
-                    <div class="overview-content-category">
-                        <ul class="strategy-list">
-                            ${strategies.map(strategy => `<li>${strategy}</li>`).join('')}
-                        </ul>
-                    </div>
-                </div>`;
-        }
-        
-        return html;
+            .map(p => `<p class="overview-paragraph">${p.replace(/\n/g, '<br>')}</p>`);
+            
+        return paragraphs.join('\n') || '<p>No content available</p>';
     }
 
     // Filter state
