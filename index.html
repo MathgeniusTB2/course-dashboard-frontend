@@ -1372,6 +1372,18 @@ Autumn session
         );
     }
 
+    // Helper function to format overview text
+    function formatOverviewText(text) {
+        if (!text) return '';
+        
+        // Split into paragraphs and preserve meaningful line breaks
+        return text.split(/\n{2,}/)  // Split on 2 or more newlines for paragraphs
+            .map(p => p.trim())
+            .filter(p => p)  // Remove empty paragraphs
+            .map(p => `<p class="overview-paragraph">${p.replace(/\n/g, '<br>')}</p>`)
+            .join('\n');
+    }
+
     function renderCourses() {
         const container = document.getElementById('cardContainer');
         const searchVal = document.getElementById('searchInput')?.value.toLowerCase() || '';
@@ -1464,21 +1476,13 @@ Autumn session
                     return '';
                 }
 
-                // Convert course object to string and properly escape quotes and special characters
-                const courseJson = JSON.stringify(course)
-                    .replace(/\\"/g, '\\\\"') // Double escape quotes within strings
-                    .replace(/"/g, '&quot;'); // Use HTML entities for outer quotes
-
-                // Calculate total weight and format assessments
-                let totalWeight = 0;
                 const assessmentHtml = course.assessments.map(task => {
                     if (!task) return '';
-                    totalWeight += task.weight || 0;
                     const groupworkTag = task.groupwork?.toLowerCase().includes('group') ? 
                         'tag-group' : 'tag-individual';
                     
                     return `
-                        <div class="assessment-item" role="button" tabindex="0">
+                        <div class="assessment-item">
                             <div class="assessment-header">
                                 <span class="assessment-title">${task.title || 'Untitled Assessment'}</span>
                                 <span class="assessment-weight">${task.weight || 0}%</span>
@@ -1493,11 +1497,14 @@ Autumn session
                     `;
                 }).join('');
 
+                // Properly escape the course data
+                const courseData = encodeURIComponent(JSON.stringify(course));
+
                 return `
-                    <div class="course-card" data-course='${courseJson}' role="button" tabindex="0">
+                    <div class="course-card" data-course="${courseData}">
                         <div class="card-header">
                             <h2>${course.code} - ${course.title}</h2>
-                            <p>${course.credit_points} - ${totalWeight}% Total Weight</p>
+                            <p>${course.credit_points}</p>
                         </div>
                         <div class="card-body">
                             <div class="prerequisites">
@@ -1509,65 +1516,31 @@ Autumn session
                 `;
             }).join('');
 
-            // Add click and keyboard handlers after rendering
+            // Add click handlers after rendering
             document.querySelectorAll('.course-card').forEach(card => {
-                const clickHandler = function(e) {
-                    try {
-                        e.stopPropagation();
-                        const courseData = card.getAttribute('data-course');
-                        if (courseData) {
-                            const parsedData = JSON.parse(courseData.replace(/&quot;/g, '"'));
-                            showCourseDetail(parsedData);
-                        }
-                    } catch (err) {
-                        console.error('Error handling card click:', err);
-                    }
-                };
-
-                card.style.cursor = 'pointer';
-                card.addEventListener('click', clickHandler);
-                card.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        clickHandler(e);
-                    }
-                });
-
-                // Make assessment items clickable too
-                card.querySelectorAll('.assessment-item').forEach(item => {
-                    item.style.cursor = 'pointer';
-                    item.addEventListener('click', (e) => {
-                        e.stopPropagation();
+                card.addEventListener('click', function() {
+                    const courseData = this.getAttribute('data-course');
+                    if (courseData) {
                         try {
-                            const courseData = card.getAttribute('data-course');
-                            if (courseData) {
-                                const parsedData = JSON.parse(courseData.replace(/&quot;/g, '"'));
-                                showCourseDetail(parsedData);
-                            }
+                            const course = JSON.parse(decodeURIComponent(courseData));
+                            showCourseDetail(course);
                         } catch (err) {
-                            console.error('Error handling assessment click:', err);
+                            console.error('Error parsing course data:', err);
                         }
-                    });
-
-                    // Add keyboard accessibility
-                    item.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            try {
-                                const courseData = card.getAttribute('data-course');
-                                if (courseData) {
-                                    const parsedData = JSON.parse(courseData.replace(/&quot;/g, '"'));
-                                    showCourseDetail(parsedData);
-                                }
-                            } catch (err) {
-                                console.error('Error handling assessment keydown:', err);
-                            }
-                        }
-                    });
+                    }
                 });
             });
 
+            // Make the cards focusable and handle keyboard events
+            document.querySelectorAll('.course-card').forEach(card => {
+                card.setAttribute('tabindex', '0');
+                card.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        this.click();
+                    }
+                });
+            });
         } catch (error) {
             console.error('Error rendering courses:', error);
             container.innerHTML = `
