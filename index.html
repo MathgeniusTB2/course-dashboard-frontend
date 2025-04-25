@@ -1293,7 +1293,9 @@ Autumn session
     function formatOverviewContent(overview) {
         // If overview is a string, format it directly
         if (typeof overview === 'string') {
-            return `<p class="overview-paragraph">${overview.split('\n\n').join('</p><p class="overview-paragraph">')}</p>`;
+            return overview.split(/\n\n+/).map(p => 
+                `<p class="overview-paragraph">${p.trim().replace(/\n/g, '<br>')}</p>`
+            ).join('');
         }
         
         // If overview is an object, format each section
@@ -1302,22 +1304,34 @@ Autumn session
             
             // Format description section if available
             if (overview.description) {
-                html += `<p class="overview-paragraph">${overview.description}</p>`;
+                html += `
+                    <div class="overview-section-category">
+                        <h4><i class="fas fa-info-circle"></i> Course Description</h4>
+                        <div class="overview-content-category">
+                            ${overview.description.split(/\n\n+/).map(p => 
+                                `<p class="overview-paragraph">${p.trim().replace(/\n/g, '<br>')}</p>`
+                            ).join('')}
+                        </div>
+                    </div>`;
             }
             
             // Format topics if available
             if (Array.isArray(overview.topics) && overview.topics.length > 0) {
-                html += '<div class="topics-section"><ul>';
-                overview.topics.forEach(topic => {
-                    html += `<li>${topic}</li>`;
-                });
-                html += '</ul></div>';
+                html += `
+                    <div class="overview-section-category">
+                        <h4><i class="fas fa-list"></i> Key Topics</h4>
+                        <div class="overview-content-category">
+                            <ul class="topics-list">
+                                ${overview.topics.map(topic => `<li>${topic}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>`;
             }
             
-            return html || '<p>No overview available</p>';
+            return html || '<p class="overview-paragraph">No overview available</p>';
         }
         
-        return '<p>No overview available</p>';
+        return '<p class="overview-paragraph">No overview available</p>';
     }
 
     // Filter state
@@ -1570,52 +1584,6 @@ Autumn session
         );
     }
 
-    // Helper function to format overview text with categories - removing duplicate and consolidating logic
-    function formatOverviewText(overview) {
-        if (!overview) return '';
-        
-        let html = '';
-        
-        // Main Description Section
-        if (overview.description) {
-            html += `
-                <div class="overview-section-category">
-                    <h4><i class="fas fa-info-circle"></i> Course Description</h4>
-                    <div class="overview-content-category">
-                        <p class="overview-paragraph">${formatOverview(overview.description)}</p>
-                    </div>
-                </div>`;
-        }
-
-        // Topics Section
-        if (overview.topics && overview.topics.length > 0) {
-            html += `
-                <div class="overview-section-category">
-                    <h4><i class="fas fa-list"></i> Key Topics</h4>
-                    <div class="overview-content-category">
-                        <ul class="topics-list">
-                            ${overview.topics.map(topic => `<li>${topic}</li>`).join('')}
-                        </ul>
-                    </div>
-                </div>`;
-        }
-
-        // Teaching Strategies Section
-        if (overview.teaching_strategies && overview.teaching_strategies.length > 0) {
-            html += `
-                <div class="overview-section-category">
-                    <h4><i class="fas fa-chalkboard-teacher"></i> Teaching Strategies</h4>
-                    <div class="overview-content-category">
-                        <ul class="strategy-list">
-                            ${overview.teaching_strategies.map(strategy => `<li>${strategy}</li>`).join('')}
-                        </ul>
-                    </div>
-                </div>`;
-        }
-        
-        return html;
-    }
-
     function renderCourses() {
         const container = document.getElementById('cardContainer');
         const searchVal = document.getElementById('searchInput')?.value.toLowerCase() || '';
@@ -1756,9 +1724,11 @@ Autumn session
                             <p>${course.credit_points}</p>
                         </div>
                         <div class="card-body">
-                            ${course.overview?.description ? `
+                            ${course.overview ? `
                                 <div class="overview-preview">
-                                    ${truncateText(course.overview.description, 150)}
+                                    ${truncateText(typeof course.overview === 'string' ? 
+                                        course.overview : 
+                                        course.overview.description || '', 150)}
                                 </div>
                             ` : ''}
                             <div class="prerequisites">
@@ -1810,172 +1780,6 @@ Autumn session
             `;
         }
     }
-
-    function formatOverview(text) {
-        if (!text) return '';
-        
-        // Split into paragraphs and preserve meaningful line breaks
-        return text.split(/\n{2,}/)  // Split on 2 or more newlines for paragraphs
-            .map(p => p.trim())
-            .filter(p => p)  // Remove empty paragraphs
-            .map(p => `<p class="overview-paragraph">${p.replace(/\n/g, '<br>')}</p>`)
-            .join('\n');
-    }
-
-    function showCourseDetail(course) {
-        try {
-            const modal = document.getElementById('courseDetailModal');
-            const content = document.getElementById('modalContent');
-            
-            if (!modal || !content) {
-                console.error('Modal elements not found');
-                return;
-            }
-
-            let html = `
-                <div class="modal-header">
-                    <h2>${course.code} - ${course.title}</h2>
-                    <p>${course.credit_points}</p>
-                </div>
-            `;
-
-            // Overview section with improved formatting
-            if (course.overview) {
-                html += `
-                    <div class="detail-section overview-section">
-                        <h3><i class="fas fa-info-circle"></i> Course Overview</h3>
-                        <div class="overview-content">
-                            ${formatOverview(course.overview)}
-                        </div>
-                    </div>
-                `;
-            }
-
-            // Add CSS for overview formatting
-            const style = document.createElement('style');
-            if (!document.querySelector('#overview-styles')) {
-                style.id = 'overview-styles';
-                style.textContent = `
-                    .overview-section {
-                        background: var(--prereq-bg);
-                        border-radius: 8px;
-                        padding: 20px;
-                        margin-bottom: 30px;
-                    }
-                    
-                    .overview-content {
-                        font-size: 1rem;
-                        line-height: 1.6;
-                    }
-                    
-                    .overview-paragraph {
-                        margin-bottom: 1em;
-                    }
-                    
-                    .overview-paragraph:last-child {
-                        margin-bottom: 0;
-                    }
-                    
-                    .dark-theme .overview-section {
-                        background: rgba(255, 255, 255, 0.05);
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-
-            // Rest of the sections
-            if (course.requisites) {
-                html += `
-                    <div class="detail-section">
-                        <h3>Prerequisites</h3>
-                        <p>${course.requisites}</p>
-                    </div>
-                `;
-            }
-
-            // Learning Outcomes
-            if (course.learning_outcomes && course.learning_outcomes.length > 0) {
-                html += `
-                    <div class="detail-section">
-                        <h3>Learning Outcomes</h3>
-                        <ul class="detail-list">
-                            ${course.learning_outcomes.map(lo => 
-                                `<li>${lo.no}. ${lo.text}</li>`
-                            ).join('')}
-                        </ul>
-                    </div>
-                `;
-            }
-
-            // Assessment Details
-            if (course.assessments && course.assessments.length > 0) {
-                html += `
-                    <div class="detail-section">
-                        <h3>Assessment Tasks</h3>
-                        <div class="detail-grid">
-                            ${course.assessments.map(task => `
-                                <div class="assessment-detail">
-                                    <h4>${task.title}</h4>
-                                    <ul class="detail-list">
-                                        <li><strong>Type:</strong> ${task.type}</li>
-                                        <li><strong>Weight:</strong> ${task.weight}%</li>
-                                        <li><strong>Work Type:</strong> ${task.groupwork}</li>
-                                        ${task.length ? `<li><strong>Length:</strong> ${task.length}</li>` : ''}
-                                        ${task.intent ? `<li><strong>Description:</strong> ${task.intent}</li>` : ''}
-                                    </ul>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-            }
-
-            content.innerHTML = html;
-            modal.style.display = 'block';
-            
-            // Enable clicking outside modal to close
-            modal.onclick = function(event) {
-                if (event.target === modal) {
-                    closeModal();
-                }
-            };
-            
-            // Enable escape key to close modal
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape') {
-                    closeModal();
-                }
-            });
-            
-        } catch (error) {
-            console.error('Error showing course details:', error);
-        }
-    }
-
-    function closeModal() {
-        const modal = document.getElementById('courseDetailModal');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-    }
-
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        const modal = document.getElementById('courseDetailModal');
-        if (event.target === modal) {
-            closeModal();
-        }
-    }
-
-    document.getElementById('clearFilters').addEventListener('click', () => {
-        assessmentTypeFilterState.clear();
-        workTypeFilterState.clear();
-        document.getElementById('searchInput').value = '';
-        renderFilters();
-        renderCourses();
-    });
-
-    document.getElementById('searchInput').addEventListener('input', () => renderCourses());
 
     // Add warmup function
     async function warmupBackend() {
@@ -2125,50 +1929,15 @@ Autumn session
         return truncated + '...';
     }
 
-    function formatOverviewText(overview) {
-        if (!overview) return '';
-        
-        let html = '';
-        
-        // Main Description Section
-        if (overview.description) {
-            html += `
-                <div class="overview-section-category">
-                    <h4><i class="fas fa-info-circle"></i> Course Description</h4>
-                    <div class="overview-content-category">
-                        <p class="overview-paragraph">${overview.description}</p>
-                    </div>
-                </div>`;
-        }
+    document.getElementById('clearFilters').addEventListener('click', () => {
+        assessmentTypeFilterState.clear();
+        workTypeFilterState.clear();
+        document.getElementById('searchInput').value = '';
+        renderFilters();
+        renderCourses();
+    });
 
-        // Topics Section
-        if (overview.topics && overview.topics.length > 0) {
-            html += `
-                <div class="overview-section-category">
-                    <h4><i class="fas fa-list"></i> Key Topics</h4>
-                    <div class="overview-content-category">
-                        <ul class="topics-list">
-                            ${overview.topics.map(topic => `<li>${topic}</li>`).join('')}
-                        </ul>
-                    </div>
-                </div>`;
-        }
-
-        // Teaching Strategies Section
-        if (overview.teaching_strategies && overview.teaching_strategies.length > 0) {
-            html += `
-                <div class="overview-section-category">
-                    <h4><i class="fas fa-chalkboard-teacher"></i> Teaching Strategies</h4>
-                    <div class="overview-content-category">
-                        <ul class="strategy-list">
-                            ${overview.teaching_strategies.map(strategy => `<li>${strategy}</li>`).join('')}
-                        </ul>
-                    </div>
-                </div>`;
-        }
-        
-        return html;
-    }
+    document.getElementById('searchInput').addEventListener('input', () => renderCourses());
 
     // Add click handlers to course cards
     function attachCardHandlers() {
@@ -2195,21 +1964,6 @@ Autumn session
                 }
             });
         });
-    }
-
-    // Helper function to truncate text with ellipsis
-    function truncateText(text, maxLength) {
-        if (!text || typeof text !== 'string' || text.length <= maxLength) return text;
-        
-        // Try to truncate at the last complete word
-        let truncated = text.substring(0, maxLength);
-        let lastSpace = truncated.lastIndexOf(' ');
-        
-        if (lastSpace > maxLength * 0.8) { // Only truncate at word if we don't lose too much text
-            truncated = truncated.substring(0, lastSpace);
-        }
-        
-        return truncated + '...';
     }
     </script>
 </body>
