@@ -861,7 +861,10 @@ Autumn session
                 body: JSON.stringify({ subject_codes: codes })
             });
 
-            console.log('Response status:', resp.status);
+            if (!resp.ok) {
+                throw new Error(`HTTP error! status: ${resp.status}`);
+            }
+
             const reader = resp.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
@@ -876,44 +879,63 @@ Autumn session
                 
                 for (const line of lines) {
                     if (!line.trim()) continue;
-                    console.log('Received line:', line); // Debug log
-                    const data = JSON.parse(line);
-                    
-                    if (data.type === 'progress') {
-                        const percentage = Math.round((data.current / data.total) * 100);
-                        status.textContent = `Processing ${data.code} (${data.current + 1}/${data.total})`;
-                        progress.style.width = `${percentage}%`;
+                    try {
+                        const data = JSON.parse(line);
+                        console.log('Received message:', data); // Debug log
                         
-                        if (data.status === 'error') {
-                            errors.push(`${data.code}: ${data.error || 'Failed to fetch'}`);
-                            errorsDiv.innerHTML = errors.map(err => 
-                                `<div class="error-item">${err}</div>`
-                            ).join('');
+                        if (data.type === 'progress') {
+                            const percentage = Math.round((data.current / data.total) * 100);
+                            status.textContent = `Processing ${data.code} (${data.current + 1}/${data.total})`;
+                            progress.style.width = `${percentage}%`;
+                            
+                            if (data.status === 'error') {
+                                errors.push(`${data.code}: ${data.error || 'Failed to fetch'}`);
+                                errorsDiv.innerHTML = errors.map(err => 
+                                    `<div class="error-item">${err}</div>`
+                                ).join('');
+                            }
                         }
-                    }
-                    else if (data.type === 'complete') {
-                        console.log('Complete data:', data); // Debug log
-                        successfulCourses = data.results
-                            .filter(c => !c.error)
-                            .map(c => ({
-                                code: c.code,
-                                name: c.title,
-                                prerequisites: c.requisites,
-                                assessments: (c.assessment || []).map(a => ({
-                                    name: a.title,
-                                    type: a.details.Type || 'Unknown',
-                                    groupwork: determineGroupwork(a.details.Groupwork),
-                                    weight: parseInt((a.details.Weight || '0').replace(/%/g, ''), 10) || 0,
-                                    length: a.details.Length || 'Not specified',
-                                    intent: a.details.Intent || ''
-                                }))
-                            }));
-                        
-                        console.log('Processed courses:', successfulCourses); // Debug log
-                        if (successfulCourses.length > 0) {
+                        else if (data.type === 'complete') {
+                            console.log('Processing complete data:', data); // Debug log
+                            successfulCourses = data.results
+                                .filter(c => !c.error)
+                                .map(c => ({
+                                    code: c.code,
+                                    name: c.title,
+                                    prerequisites: c.requisites,
+                                    assessments: (c.assessment || []).map(a => ({
+                                        name: a.title,
+                                        type: a.details.Type || 'Unknown',
+                                        groupwork: determineGroupwork(a.details.Groupwork),
+                                        weight: parseInt((a.details.Weight || '0').replace(/%/g, ''), 10) || 0,
+                                        length: a.details.Length || 'Not specified',
+                                        intent: a.details.Intent || ''
+                                    }))
+                                }));
+                            
+                            console.log('Processed courses:', successfulCourses); // Debug log
+
+                            // Update global courses array
                             courses = successfulCourses;
-                            initializeDashboard();
+                            
+                            // Initialize dashboard if we have courses
+                            if (courses.length > 0) {
+                                console.log('Initializing dashboard with courses:', courses); // Debug log
+                                initializeDashboard();
+                            } else {
+                                console.log('No courses to display'); // Debug log
+                                const container = document.getElementById('courseContainer');
+                                container.innerHTML = `
+                                    <div class="empty-state">
+                                        <i class="fas fa-inbox"></i>
+                                        <h3>No Courses Found</h3>
+                                        <p>No courses were successfully loaded. Please check the errors above and try again.</p>
+                                    </div>
+                                `;
+                            }
                         }
+                    } catch (e) {
+                        console.error('Error processing message:', e, 'Line:', line);
                     }
                 }
             }
@@ -922,19 +944,19 @@ Autumn session
                 (errors.length ? ` (${errors.length} failed)` : '');
                 
         } catch (e) {
-            console.error('Fetch error:', e); // Debug log
+            console.error('Fetch error:', e);
             status.textContent = 'Failed to fetch courses';
             errorsDiv.innerHTML = `<div class="error-item">Network error: ${e.message}</div>`;
         } finally {
-            setTimeout(() => {
-                if (errors.length === 0) {
+            if (errors.length === 0) {
+                setTimeout(() => {
                     spinner.style.display = 'none';
-                } else {
-                    setTimeout(() => {
-                        spinner.style.display = 'none';
-                    }, 3000);
-                }
-            }, 500);
+                }, 500);
+            } else {
+                setTimeout(() => {
+                    spinner.style.display = 'none';
+                }, 3000);
+            }
         }
     }
 
