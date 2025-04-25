@@ -933,11 +933,183 @@ Autumn session
 
     <script>
     let courses = [];
+    let filteredCourses = [];
+    const BACKEND_URL = "https://course-dashboard-backend.onrender.com";
+    const WARMUP_TIMEOUT = 60000; // 60 seconds timeout for cold starts
+    let isWarmedUp = false;
+
+    // Add warmup function
+    async function warmupBackend() {
+        const spinner = document.getElementById('loadingSpinner');
+        const status = document.getElementById('loadingStatus');
+        spinner.style.display = 'block';
+        status.textContent = 'Warming up server... (this may take up to 60 seconds)';
+        
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), WARMUP_TIMEOUT);
+            
+            const response = await fetch(`${BACKEND_URL}/api/warmup`, {
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (response.ok) {
+                isWarmedUp = true;
+                spinner.style.display = 'none';
+                return true;
+            }
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                status.textContent = 'Server is taking longer than usual to respond. Please try again.';
+            } else {
+                status.textContent = 'Error connecting to server. Please try again.';
+            }
+            console.error('Warmup error:', error);
+            spinner.style.display = 'none';
+            return false;
+        }
+    }
+
+    async function fetchAndInit(codes) {
+        const spinner = document.getElementById('loadingSpinner');
+        const status = document.getElementById('loadingStatus');
+        const progress = document.getElementById('loadingProgress');
+        const errorsDiv = document.getElementById('loadingErrors');
+        
+        spinner.style.display = 'block';
+        progress.style.width = '0%';
+        progress.style.transition = 'width 0.5s ease-out';
+        errorsDiv.innerHTML = '';
+        
+        // Ensure backend is warmed up before proceeding
+        if (!isWarmedUp) {
+            const warmedUp = await warmupBackend();
+            if (!warmedUp) {
+                return;
+            }
+        }
+
+        let errors = [];
+        let successfulCourses = [];
+        
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), WARMUP_TIMEOUT);
+
+            const resp = await fetch(`${BACKEND_URL}/api/courses`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ subject_codes: codes }),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!resp.ok) {
+                throw new Error(`HTTP error! status: ${resp.status}`);
+            }
+
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let lastPercentage = 0;
+
+            while (true) {
+                const {value, done} = await reader.read();
+                if (done) break;
+                
+                buffer += decoder.decode(value, {stream: true});
+                const lines = buffer.split('\n');
+                buffer = lines.pop(); // Keep incomplete line in buffer
+                
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    try {
+                        const data = JSON.parse(line);
+                        
+                        if (data.type === 'progress') {
+                            const percentage = Math.round((data.current / data.total) * 100);
+                            
+                            if (percentage > lastPercentage) {
+                                lastPercentage = percentage;
+                                requestAnimationFrame(() => {
+                                    progress.style.width = `${percentage}%`;
+                                });
+                            }
+                            
+                            if (data.status === 'fetching') {
+                                status.textContent = `Fetching ${data.code} (${data.current}/${data.total})`;
+                            } else {
+                                status.textContent = `Processed ${data.code} (${data.current + 1}/${data.total})`;
+                            }
+                            
+                            if (data.error) {
+                                errors.push(`${data.code}: ${data.error}`);
+                                errorsDiv.innerHTML = errors.map(err => 
+                                    `<div class="error-item">${err}</div>`
+                                ).join('');
+                            }
+                        }
+                        else if (data.type === 'complete') {
+                            successfulCourses = data.results
+                                .filter(c => !c.error)
+                                .map(c => ({
+                                    code: c.code,
+                                    title: c.title,
+                                    credit_points: c.credit_points,
+                                    prerequisites: c.requisites,
+                                    overview: c.overview,
+                                    learning_outcomes: c.learning_outcomes,
+                                    assessments: (c.assessment || []).map(a => ({
+                                        name: a.title,
+                                        type: a.details.Type || 'Unknown',
+                                        groupwork: determineGroupwork(a.details.Groupwork),
+                                        weight: parseInt((a.details.Weight || '0').replace(/%/g, ''), 10) || 0,
+                                        length: a.details.Length || 'Not specified',
+                                        intent: a.details.Intent || ''
+                                    }))
+                                }));
+                            
+                            courses = successfulCourses;
+                            if (courses.length > 0) {
+                                initializeDashboard();
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error processing message:', e, 'Line:', line);
+                    }
+                }
+            }
+            
+            status.textContent = `Loaded ${successfulCourses.length} courses` + 
+                (errors.length ? ` (${errors.length} failed)` : '');
+                
+        } catch (e) {
+            console.error('Fetch error:', e);
+            if (e.name === 'AbortError') {
+                status.textContent = 'Request timed out. The server may be starting up, please try again.';
+            } else {
+                status.textContent = 'Failed to fetch courses';
+            }
+            errorsDiv.innerHTML = `<div class="error-item">Error: ${e.message}</div>`;
+        } finally {
+            setTimeout(() => {
+                if (errors.length === 0) {
+                    spinner.style.display = 'none';
+                } else {
+                    setTimeout(() => {
+                        spinner.style.display = 'none';
+                    }, 3000);
+                }
+            }, 500);
+        }
+    }
+
     // Filter state: Map<filterName, 0|1|-1> (0=neutral, 1=include, -1=exclude)
     let assessmentTypeFilterState = new Map();
     let workTypeFilterState = new Map();
-
-    const BACKEND_URL = "https://course-dashboard-backend.onrender.com";
 
     async function fetchAndInit(codes) {
         const spinner = document.getElementById('loadingSpinner');
