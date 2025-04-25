@@ -878,8 +878,18 @@ Autumn session
                     const data = JSON.parse(line);
                     
                     if (data.type === 'progress') {
+                        // Calculate percentage based on current vs total
                         const percentage = Math.round((data.current / data.total) * 100);
-                        status.textContent = `Processing ${data.code} (${data.current}/${data.total})`;
+                        
+                        // Update status message based on the current action
+                        if (data.status === 'fetching') {
+                            status.textContent = `Fetching ${data.code} (${data.current + 1}/${data.total})`;
+                        } else {
+                            status.textContent = `Processed ${data.code} (${data.current}/${data.total})`;
+                        }
+                        
+                        // Smoothly update progress bar
+                        progress.style.transition = 'width 0.3s ease-out';
                         progress.style.width = `${percentage}%`;
                         
                         if (data.status === 'error') {
