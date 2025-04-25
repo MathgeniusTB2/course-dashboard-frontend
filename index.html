@@ -431,7 +431,7 @@
 
         .tag-individual {
             background-color: var(--tag-individual-bg);
-            color: var(--tag-individual-text);
+            color: var (--tag-individual-text);
             border: 1px solid #2a3b2a;
         }
 
@@ -759,27 +759,56 @@
         const searchVal = document.getElementById('searchInput').value.toLowerCase();
         container.innerHTML = '';
 
-        function filterByState(val, map) {
-            if (map.size === 0) return true;
+        // Returns true if the value is included, false if excluded, or null if neutral
+        function getFilterState(val, map) {
+            if (map.size === 0) return null;
             if (map.get(val) === 1) return true;
             if (map.get(val) === -1) return false;
-            // If any includes exist, only show those
-            if ([...map.values()].includes(1)) return map.get(val) === 1;
-            // If any excludes exist, exclude those
-            if ([...map.values()].includes(-1)) return map.get(val) !== -1;
+            return null;
+        }
+
+        // Returns true if the assessment matches all include filters and none of the exclude filters
+        function assessmentMatchesFilters(a) {
+            // Assessment Type
+            const typeState = getFilterState(a.type, assessmentTypeFilterState);
+            if (typeState === false) return false;
+            // Work Type
+            const workState = getFilterState(a.groupwork, workTypeFilterState);
+            if (workState === false) return false;
+
+            // If there are any include filters, must match them
+            if ([...assessmentTypeFilterState.values()].includes(1) && typeState !== true) return false;
+            if ([...workTypeFilterState.values()].includes(1) && workState !== true) return false;
+
             return true;
         }
 
-        // Updated: Only show courses where ANY assessment matches all filter criteria
+        // Exclude course if ANY assessment matches an exclude filter
+        function courseIsExcluded(course) {
+            // Assessment type excludes
+            const typeExcludes = [...assessmentTypeFilterState.entries()].filter(([k, v]) => v === -1).map(([k]) => k);
+            if (typeExcludes.length > 0 && course.assessments.some(a => typeExcludes.includes(a.type))) return true;
+            // Work type excludes
+            const workExcludes = [...workTypeFilterState.entries()].filter(([k, v]) => v === -1).map(([k]) => k);
+            if (workExcludes.length > 0 && course.assessments.some(a => workExcludes.includes(a.groupwork))) return true;
+            return false;
+        }
+
+        // Only show courses where at least one assessment matches all include filters and none match any exclude filter
         const filteredCourses = courses.filter(course => {
             if (searchVal && !(course.name.toLowerCase().includes(searchVal) || course.code.includes(searchVal))) {
                 return false;
             }
-            // At least one assessment matches BOTH filters
-            return course.assessments.some(a =>
-                filterByState(a.type, assessmentTypeFilterState) &&
-                filterByState(a.groupwork, workTypeFilterState)
-            );
+            if (courseIsExcluded(course)) return false;
+
+            // If there are any include filters, require at least one assessment matches all includes
+            const hasIncludeType = [...assessmentTypeFilterState.values()].includes(1);
+            const hasIncludeWork = [...workTypeFilterState.values()].includes(1);
+            if (hasIncludeType || hasIncludeWork) {
+                return course.assessments.some(a => assessmentMatchesFilters(a));
+            }
+            // If no includes, just require not excluded
+            return true;
         });
 
         if (filteredCourses.length === 0) {
