@@ -958,7 +958,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            color: var(--accent);
+            color: var (--accent);
             font-size: 1.1rem;
             margin-bottom: 15px;
         }
@@ -991,7 +991,7 @@
             content: "•";
             position: absolute;
             left: 0;
-            color: var(--accent);
+            color: var (--accent);
         }
 
         .dark-theme .overview-section-category {
@@ -1008,46 +1008,53 @@
     <div class="container">
         <header>
             <h1>Course Assessment Dashboard</h1>
-            <p class="app-description">Analyze and track assessment details across your university courses. Filter by assessment types, work requirements, and search for specific courses.</p>
-            <button id="fetchBtn"><i class="fas fa-download"></i> Import Courses</button>
+            <p class="app-description">View and analyze course assessments and requirements. Import your courses to get started.</p>
+            <button id="fetchBtn" class="primary-button">
+                <i class="fas fa-plus"></i>
+                Import Courses
+            </button>
+            <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark mode">
+                <i class="fas fa-moon"></i>
+            </button>
         </header>
         
         <div class="loading-spinner" id="loadingSpinner">
             <div class="spinner"></div>
+            <div class="loading-status" id="loadingStatus">Loading...</div>
             <div class="loading-progress">
-                <p id="loadingStatus">Loading your courses...</p>
-                <div id="loadingErrors" class="loading-errors"></div>
-                <div class="progress-container">
-                    <div class="progress-bar" id="loadingProgress"></div>
-                </div>
+                <div id="loadingProgress" style="width: 0%"></div>
             </div>
+            <div class="loading-errors" id="loadingErrors"></div>
         </div>
         
         <div class="controls">
             <div class="filter-section">
-                <h3><i class="fas fa-clipboard-list"></i> Assessment Types</h3>
-                <div class="checkbox-container" id="assessmentTypeFilters"></div>
+                <h3><i class="fas fa-search"></i>Search</h3>
+                <input type="text" id="searchInput" class="search-input" placeholder="Search courses...">
             </div>
             
             <div class="filter-section">
-                <h3><i class="fas fa-users"></i> Work Types</h3>
-                <div class="checkbox-container" id="workTypeFilters"></div>
+                <h3><i class="fas fa-tasks"></i>Assessment Types</h3>
+                <div id="assessmentTypeFilters"></div>
             </div>
             
             <div class="filter-section">
-                <h3><i class="fas fa-search"></i> Search</h3>
-                <input type="text" id="searchInput" class="search-input" placeholder="Search by course name or code...">
-                <button class="clear-filters" id="clearFilters"><i class="fas fa-times"></i> Clear Filters</button>
+                <h3><i class="fas fa-users"></i>Work Types</h3>
+                <div id="workTypeFilters"></div>
             </div>
             
-            <div class="filter-section">
-                <h3><i class="fas fa-palette"></i> Theme</h3>
-                <button id="themeToggle"><i class="fas fa-moon"></i> Dark Mode</button>
-            </div>
+            <button id="clearFilters" class="clear-filters">
+                <i class="fas fa-times"></i>
+                Clear All Filters
+            </button>
         </div>
         
         <div class="card-container" id="cardContainer">
-            <!-- Cards will be populated here -->
+            <div class="empty-state">
+                <i class="fas fa-file-import"></i>
+                <h3>No courses imported yet</h3>
+                <p>Click the "Import Courses" button above to get started. You can paste in course codes or copy them from your study plan.</p>
+            </div>
         </div>
     </div>
     <div id="importDialog" class="import-dialog" style="display:none;">
@@ -1153,7 +1160,6 @@ Autumn session
             if (course.overview) {
                 // Format the overview section
                 if (typeof course.overview === 'string') {
-                    // Handle string overview
                     html += `
                         <div class="detail-section overview-section">
                             <h3><i class="fas fa-info-circle"></i> Course Overview</h3>
@@ -1163,39 +1169,9 @@ Autumn session
                         </div>
                     `;
                 } else {
-                    // Handle structured overview
                     html += `
                         <div class="detail-section overview-section">
-                            ${course.overview.description ? `
-                                <div class="overview-section-category">
-                                    <h4><i class="fas fa-info-circle"></i> Course Description</h4>
-                                    <div class="overview-content-category">
-                                        <p class="overview-paragraph">${course.overview.description}</p>
-                                    </div>
-                                </div>
-                            ` : ''}
-                            
-                            ${course.overview.topics && course.overview.topics.length > 0 ? `
-                                <div class="overview-section-category">
-                                    <h4><i class="fas fa-list"></i> Key Topics</h4>
-                                    <div class="overview-content-category">
-                                        <ul class="topics-list">
-                                            ${course.overview.topics.map(topic => `<li>${topic}</li>`).join('')}
-                                        </ul>
-                                    </div>
-                                </div>
-                            ` : ''}
-                            
-                            ${course.overview.teaching_strategies && course.overview.teaching_strategies.length > 0 ? `
-                                <div class="overview-section-category">
-                                    <h4><i class="fas fa-chalkboard-teacher"></i> Teaching Strategies</h4>
-                                    <div class="overview-content-category">
-                                        <ul class="strategy-list">
-                                            ${course.overview.teaching_strategies.map(strategy => `<li>${strategy}</li>`).join('')}
-                                        </ul>
-                                    </div>
-                                </div>
-                            ` : ''}
+                            ${formatOverviewText(course.overview)}
                         </div>
                     `;
                 }
@@ -1211,7 +1187,7 @@ Autumn session
                 `;
             }
 
-            // Learning Outcomes section
+            // Learning Outcomes section - single implementation
             if (course.learning_outcomes?.length > 0) {
                 html += `
                     <div class="detail-section">
@@ -1225,8 +1201,8 @@ Autumn session
                 `;
             }
 
-            // Assessment Details section
-            if (course.assessments?.length > 0) {
+            // Assessment Details
+            if (course.assessments && course.assessments.length > 0) {
                 html += `
                     <div class="detail-section">
                         <h3>Assessment Tasks</h3>
@@ -1538,54 +1514,48 @@ Autumn session
         );
     }
 
-    // Helper function to format overview text with categories
-    function formatOverviewText(text) {
-        if (!text) return '';
+    // Helper function to format overview text with categories - removing duplicate and consolidating logic
+    function formatOverviewText(overview) {
+        if (!overview) return '';
         
-        // Split into major sections based on content
-        const parts = text.split(/(?=[A-Z][a-z]+ part:)|(?=Topics include:)/g)
-            .map(p => p.trim())
-            .filter(p => p);
-            
         let html = '';
         
-        // Format each section appropriately
-        parts.forEach(part => {
-            if (part.startsWith('Topics include:')) {
-                html += `
-                    <div class="overview-section-category">
-                        <h4><i class="fas fa-list"></i> Key Topics</h4>
-                        <div class="overview-content-category">
-                            <ul class="topics-list">
-                                ${part.replace('Topics include:', '')
-                                    .split(';')
-                                    .map(topic => `<li>${topic.trim()}</li>`)
-                                    .join('')}
-                            </ul>
-                        </div>
-                    </div>`;
-            } else {
-                // For the main description
-                const paragraphs = part.split(/[.!?](?:\s+|\n)/)
-                    .filter(p => p.trim())
-                    .map(p => p.trim() + '.')
-                    .reduce((acc, sentence, i, arr) => {
-                        const paragraphIndex = Math.floor(i / 3);
-                        if (!acc[paragraphIndex]) acc[paragraphIndex] = [];
-                        acc[paragraphIndex].push(sentence);
-                        return acc;
-                    }, [])
-                    .map(sentences => sentences.join(' '));
+        // Main Description Section
+        if (overview.description) {
+            html += `
+                <div class="overview-section-category">
+                    <h4><i class="fas fa-info-circle"></i> Course Description</h4>
+                    <div class="overview-content-category">
+                        <p class="overview-paragraph">${formatOverview(overview.description)}</p>
+                    </div>
+                </div>`;
+        }
 
-                html += `
-                    <div class="overview-section-category">
-                        <h4><i class="fas fa-book"></i> Course Description</h4>
-                        <div class="overview-content-category">
-                            ${paragraphs.map(p => `<p class="overview-paragraph">${p}</p>`).join('\n')}
-                        </div>
-                    </div>`;
-            }
-        });
+        // Topics Section
+        if (overview.topics && overview.topics.length > 0) {
+            html += `
+                <div class="overview-section-category">
+                    <h4><i class="fas fa-list"></i> Key Topics</h4>
+                    <div class="overview-content-category">
+                        <ul class="topics-list">
+                            ${overview.topics.map(topic => `<li>${topic}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>`;
+        }
+
+        // Teaching Strategies Section
+        if (overview.teaching_strategies && overview.teaching_strategies.length > 0) {
+            html += `
+                <div class="overview-section-category">
+                    <h4><i class="fas fa-chalkboard-teacher"></i> Teaching Strategies</h4>
+                    <div class="overview-content-category">
+                        <ul class="strategy-list">
+                            ${overview.teaching_strategies.map(strategy => `<li>${strategy}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>`;
+        }
         
         return html;
     }
@@ -1897,19 +1867,6 @@ Autumn session
             closeModal();
         }
     }
-
-    // Theme toggle
-    const themeBtn = document.getElementById('themeToggle');
-    function setTheme(dark) {
-        document.body.classList.toggle('dark-theme', dark);
-        themeBtn.textContent = dark ? '☀️ Light' : '🌙 Dark';
-        localStorage.setItem('theme', dark ? 'dark' : 'light');
-    }
-    themeBtn.addEventListener('click', () => {
-        setTheme(!document.body.classList.contains('dark-theme'));
-    });
-    // On load, set theme from localStorage
-    setTheme(localStorage.getItem('theme') === 'dark');
 
     document.getElementById('clearFilters').addEventListener('click', () => {
         assessmentTypeFilterState.clear();
