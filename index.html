@@ -1606,5 +1606,149 @@ Autumn session
 
     document.getElementById('searchInput').addEventListener('input', () => renderCourses());
     </script>
+    <script>
+    // Theme handling
+    const themeBtn = document.getElementById('themeToggle');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    function setTheme(isDark) {
+        document.body.classList.toggle('dark-theme', isDark);
+        if (themeBtn) {
+            themeBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i> Light Mode' : '<i class="fas fa-moon"></i> Dark Mode';
+        }
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    }
+
+    // Initialize theme
+    function initTheme() {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            setTheme(savedTheme === 'dark');
+        } else {
+            setTheme(prefersDark.matches);
+        }
+    }
+
+    // Theme button click handler
+    if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+            setTheme(!document.body.classList.contains('dark-theme'));
+        });
+    }
+
+    // Listen for system theme changes
+    prefersDark.addListener((e) => {
+        if (!localStorage.getItem('theme')) {
+            setTheme(e.matches);
+        }
+    });
+
+    // Initialize theme on page load
+    initTheme();
+
+    // Filter state maps
+    const assessmentTypeFilterState = new Map();
+    const workTypeFilterState = new Map();
+    
+    // Initialize filter handlers
+    document.getElementById('clearFilters')?.addEventListener('click', () => {
+        assessmentTypeFilterState.clear();
+        workTypeFilterState.clear();
+        if (document.getElementById('searchInput')) {
+            document.getElementById('searchInput').value = '';
+        }
+        renderFilters();
+        renderCourses();
+    });
+
+    document.getElementById('searchInput')?.addEventListener('input', () => {
+        renderCourses();
+    });
+
+    // Import dialog handlers
+    document.getElementById('fetchBtn')?.addEventListener('click', () => {
+        const dialog = document.getElementById('importDialog');
+        const overlay = document.getElementById('importOverlay');
+        if (dialog && overlay) {
+            dialog.style.display = 'block';
+            overlay.style.display = 'block';
+        }
+    });
+
+    // Close import dialog
+    function closeImport() {
+        const dialog = document.getElementById('importDialog');
+        const overlay = document.getElementById('importOverlay');
+        const textarea = document.getElementById('importText');
+        
+        if (dialog) dialog.style.display = 'none';
+        if (overlay) overlay.style.display = 'none';
+        if (textarea) textarea.value = '';
+    }
+
+    // Process import
+    async function processImport() {
+        const input = document.getElementById('importText')?.value;
+        if (!input) return;
+
+        // Extract all 5-digit numbers from any text
+        const codes = [...new Set(input.match(/\b\d{5}\b/g))];
+        
+        if (codes.length === 0) {
+            alert('No valid course codes found. Course codes are 5-digit numbers.');
+            return;
+        }
+
+        closeImport();
+        
+        const progressContainer = document.querySelector('.progress-container');
+        const progressBar = document.querySelector('.progress-bar');
+        if (progressContainer) progressContainer.style.display = 'block';
+        
+        let progress = 0;
+        const updateProgress = () => {
+            progress += (100 - progress) * 0.1;
+            if (progressBar) progressBar.style.width = `${progress}%`;
+        };
+        
+        const progressInterval = setInterval(updateProgress, 100);
+        
+        try {
+            await fetchAndInit(codes);
+        } finally {
+            clearInterval(progressInterval);
+            if (progressBar) progressBar.style.width = '100%';
+            setTimeout(() => {
+                if (progressContainer) {
+                    progressContainer.style.display = 'none';
+                    if (progressBar) progressBar.style.width = '0%';
+                }
+            }, 500);
+        }
+    }
+
+    // Ensure modal can be closed
+    function closeModal() {
+        const modal = document.getElementById('courseDetailModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    // Close modal when clicking outside
+    window.addEventListener('click', (event) => {
+        const modal = document.getElementById('courseDetailModal');
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
+
+    // Close modal with escape key
+    window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeModal();
+        }
+    });
+    </script>
 </body>
 </html>
