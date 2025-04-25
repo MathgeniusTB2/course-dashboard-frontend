@@ -212,7 +212,7 @@
         .dark-theme .course-card[data-bg="Presentation"] {
             background: linear-gradient(135deg, #2a1a38 70%, #23262e 100%);
             border-color: var(--neon-purple);
-            box-shadow: 0 0 16px 0 var(--neon-purple), var(--shadow);
+            box-shadow: 0 0 16px 0 var (--neon-purple), var(--shadow);
         }
         .dark-theme .course-card[data-bg="Examination"] {
             background: linear-gradient(135deg, #2a2a1a 70%, #23262e 100%);
@@ -770,11 +770,12 @@
             return true;
         }
 
+        // Updated: Only show courses where ANY assessment matches all filter criteria
         const filteredCourses = courses.filter(course => {
             if (searchVal && !(course.name.toLowerCase().includes(searchVal) || course.code.includes(searchVal))) {
                 return false;
             }
-            // At least one assessment matches both filters
+            // At least one assessment matches BOTH filters
             return course.assessments.some(a =>
                 filterByState(a.type, assessmentTypeFilterState) &&
                 filterByState(a.groupwork, workTypeFilterState)
@@ -837,6 +838,7 @@
                 // Neon tag for assessment type
                 const typeTagClass = getTypeTagClass(a.type);
 
+                // Add length to assessment description
                 item.innerHTML = `
                     <div class="assessment-header">
                         <span class="assessment-title">${a.name}</span>
@@ -846,6 +848,7 @@
                     <div class="assessment-details">
                         <span class="tag ${typeTagClass}">${a.type}</span>
                         <span class="tag ${groupworkClass}">${a.groupwork}</span>
+                        <span class="tag">${a.length}</span>
                     </div>
                 `;
                 body.appendChild(item);
