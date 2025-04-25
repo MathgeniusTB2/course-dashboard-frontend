@@ -852,20 +852,26 @@
 
         .overview-section {
             background: var(--prereq-bg);
+da            padding: 25px;
             border-radius: 12px;
-            padding: 25px;
-            margin: 0 -10px 30px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin: 0 0 20px;
+            position: relative;
+            border-left: 4px solid var(--accent);
+            transition: background-color var(--transition-speed);
         }
 
         .overview-content {
-            font-size: 1.05rem;
+            font-size: 1rem;
             line-height: 1.7;
             color: var(--text);
         }
 
+        .dark-theme .overview-content {
+            color: #e3e8f0;
+        }
+
         .overview-paragraph {
-            margin-bottom: 1.2em;
+            margin-bottom: 1em;
             text-align: justify;
         }
 
@@ -876,6 +882,23 @@
         .dark-theme .overview-section {
             background: rgba(255, 255, 255, 0.03);
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .overview-preview {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: var(--text);
+            margin-bottom: 20px;
+            padding: 15px;
+            background: var(--prereq-bg);
+            border-radius: 8px;
+            border-left: 4px solid var(--accent);
+            transition: background-color var(--transition-speed), color var(--transition-speed);
+        }
+
+        .dark-theme .overview-preview {
+            background: rgba(255, 255, 255, 0.03);
+            color: #94a3b8;
         }
 
     </style>
@@ -1029,7 +1052,7 @@ Autumn session
             if (course.overview) {
                 html += `
                     <div class="detail-section overview-section">
-                        <h3>Overview</h3>
+                        <h3><i class="fas fa-info-circle"></i> Course Overview</h3>
                         <div class="overview-content">
                             ${formatOverviewText(course.overview)}
                         </div>
@@ -1507,6 +1530,11 @@ Autumn session
                             <p>${course.credit_points}</p>
                         </div>
                         <div class="card-body">
+                            ${course.overview ? `
+                                <div class="overview-preview">
+                                    ${truncateText(course.overview, 150)}
+                                </div>
+                            ` : ''}
                             <div class="prerequisites">
                                 <strong>Prerequisites:</strong> ${course.requisites || 'None'}
                             </div>
@@ -1585,7 +1613,7 @@ Autumn session
             if (course.overview) {
                 html += `
                     <div class="detail-section overview-section">
-                        <h3>Overview</h3>
+                        <h3><i class="fas fa-info-circle"></i> Course Overview</h3>
                         <div class="overview-content">
                             ${formatOverview(course.overview)}
                         </div>
@@ -1863,6 +1891,21 @@ Autumn session
         Array.from(allWorkTypes).sort().forEach(w => 
             createFilterPill(w, workTypeFilterState, workTypeFilters)
         );
+    }
+
+    // Helper function to truncate text with ellipsis
+    function truncateText(text, maxLength) {
+        if (!text || text.length <= maxLength) return text;
+        
+        // Try to truncate at the last complete word
+        let truncated = text.substr(0, maxLength);
+        let lastSpace = truncated.lastIndexOf(' ');
+        
+        if (lastSpace > maxLength * 0.8) { // Only truncate at word if we don't lose too much text
+            truncated = truncated.substr(0, lastSpace);
+        }
+        
+        return truncated + '...';
     }
     </script>
 </body>
