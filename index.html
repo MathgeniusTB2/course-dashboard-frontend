@@ -1464,21 +1464,21 @@ Autumn session
                     return '';
                 }
 
-                // Store stringified course data in the card
-                const courseJson = JSON.stringify(course).replace(/"/g, '&quot;');
-                
+                // Convert course object to string and properly escape quotes and special characters
+                const courseJson = JSON.stringify(course)
+                    .replace(/\\"/g, '\\\\"') // Double escape quotes within strings
+                    .replace(/"/g, '&quot;'); // Use HTML entities for outer quotes
+
                 // Calculate total weight and format assessments
                 let totalWeight = 0;
                 const assessmentHtml = course.assessments.map(task => {
                     if (!task) return '';
-                    
                     totalWeight += task.weight || 0;
-                    
                     const groupworkTag = task.groupwork?.toLowerCase().includes('group') ? 
                         'tag-group' : 'tag-individual';
                     
                     return `
-                        <div class="assessment-item">
+                        <div class="assessment-item" role="button" tabindex="0">
                             <div class="assessment-header">
                                 <span class="assessment-title">${task.title || 'Untitled Assessment'}</span>
                                 <span class="assessment-weight">${task.weight || 0}%</span>
@@ -1494,7 +1494,7 @@ Autumn session
                 }).join('');
 
                 return `
-                    <div class="course-card" data-code="${course.code}" data-course='${courseJson}'>
+                    <div class="course-card" data-course='${courseJson}' role="button" tabindex="0">
                         <div class="card-header">
                             <h2>${course.code} - ${course.title}</h2>
                             <p>${course.credit_points} - ${totalWeight}% Total Weight</p>
@@ -1509,24 +1509,60 @@ Autumn session
                 `;
             }).join('');
 
-            // Add click handlers after rendering
+            // Add click and keyboard handlers after rendering
             document.querySelectorAll('.course-card').forEach(card => {
+                const clickHandler = function(e) {
+                    try {
+                        e.stopPropagation();
+                        const courseData = card.getAttribute('data-course');
+                        if (courseData) {
+                            const parsedData = JSON.parse(courseData.replace(/&quot;/g, '"'));
+                            showCourseDetail(parsedData);
+                        }
+                    } catch (err) {
+                        console.error('Error handling card click:', err);
+                    }
+                };
+
                 card.style.cursor = 'pointer';
-                card.addEventListener('click', function(e) {
-                    const courseData = this.dataset.course;
-                    if (courseData) {
-                        showCourseDetail(JSON.parse(courseData));
+                card.addEventListener('click', clickHandler);
+                card.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        clickHandler(e);
                     }
                 });
-                
+
                 // Make assessment items clickable too
                 card.querySelectorAll('.assessment-item').forEach(item => {
                     item.style.cursor = 'pointer';
-                    item.addEventListener('click', function(e) {
+                    item.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        const courseData = this.closest('.course-card').dataset.course;
-                        if (courseData) {
-                            showCourseDetail(JSON.parse(courseData));
+                        try {
+                            const courseData = card.getAttribute('data-course');
+                            if (courseData) {
+                                const parsedData = JSON.parse(courseData.replace(/&quot;/g, '"'));
+                                showCourseDetail(parsedData);
+                            }
+                        } catch (err) {
+                            console.error('Error handling assessment click:', err);
+                        }
+                    });
+
+                    // Add keyboard accessibility
+                    item.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            try {
+                                const courseData = card.getAttribute('data-course');
+                                if (courseData) {
+                                    const parsedData = JSON.parse(courseData.replace(/&quot;/g, '"'));
+                                    showCourseDetail(parsedData);
+                                }
+                            } catch (err) {
+                                console.error('Error handling assessment keydown:', err);
+                            }
                         }
                     });
                 });
