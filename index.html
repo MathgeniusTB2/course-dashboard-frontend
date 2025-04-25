@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Course Assessment Dashboard</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Course Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
             --bg: #f5f7fa;
@@ -333,8 +333,8 @@
         
         .card-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 30px;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
             animation: cardsIn 0.6s ease-out;
         }
         
@@ -351,14 +351,15 @@
         
         .course-card {
             background: var(--card-bg);
-            border-radius: 20px;
+            border-radius: 16px;
             overflow: hidden;
             box-shadow: var(--card-shadow);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             border: 2px solid transparent;
             position: relative;
             backdrop-filter: blur(10px);
             cursor: pointer;
+            min-height: 200px;
         }
 
         .course-card:hover {
@@ -389,29 +390,47 @@
         .card-header {
             background: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 100%);
             color: white;
-            padding: 25px;
+            padding: 15px;
             position: relative;
             z-index: 1;
         }
         
         .card-header h2 {
             margin: 0;
-            font-size: 1.3rem;
+            font-size: 1.1rem;
             font-weight: 800;
             display: flex;
             align-items: center;
             text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 5px;
         }
         
         .card-header p {
             margin: 8px 0 0;
-            font-size: 1rem;
+            font-size: 0.9rem;
             opacity: 0.9;
             font-weight: 500;
         }
         
         .card-body {
-            padding: 25px;
+            padding: 15px;
+        }
+
+        .course-card .assessment-preview {
+            font-size: 0.9rem;
+            color: var(--text);
+            opacity: 0.8;
+        }
+
+        .course-card .view-more {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            font-size: 0.8rem;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         
         .prerequisites {
@@ -910,808 +929,1144 @@
 
         /* Modal styles */
         .modal {
-            display: none;
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background-color: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
             z-index: 1000;
-            overflow-y: auto;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal.show {
+            opacity: 1;
         }
 
         .modal-content {
-            position: relative;
-            background: var(--card-bg);
-            margin: 40px auto;
-            padding: 0;
-            width: 90%;
-            max-width: 900px;
-            border-radius: 24px;
-            box-shadow: var(--card-shadow);
-            animation: modalSlideIn 0.3s ease-out;
+            background: var(--card-background);
+            width: 95%;
+            max-width: 1200px;
+            max-height: 90vh;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transform: translateY(20px);
+            opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal.show .modal-content {
+            transform: translateY(0);
+            opacity: 1;
         }
 
         .modal-header {
-            background: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 100%);
-            padding: 30px;
-            border-radius: 24px 24px 0 0;
-            position: relative;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent) 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 2;
         }
 
         .modal-header h2 {
-            color: white;
             margin: 0;
-            font-size: 2rem;
-            font-weight: 800;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
         }
 
-        .modal-header p {
-            color: rgba(255, 255, 255, 0.9);
-            margin: 10px 0 0;
-            font-size: 1.2rem;
-        }
-
-        .modal-body {
-            padding: 30px;
-            max-height: 70vh;
-            overflow-y: auto;
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 20px;
-            right: 20px;
+        .close-btn {
             background: rgba(255, 255, 255, 0.2);
             border: none;
             color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 20px;
-            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            border-radius: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            cursor: pointer;
             transition: all 0.3s ease;
         }
 
-        .modal-close:hover {
+        .close-btn:hover {
             background: rgba(255, 255, 255, 0.3);
             transform: rotate(90deg);
         }
 
-        .modal-section {
-            margin-bottom: 30px;
-            padding-bottom: 30px;
-            border-bottom: 1px solid rgba(0,0,0,0.1);
-        }
-
-        .dark-theme .modal-section {
-            border-bottom-color: rgba(255,255,255,0.1);
-        }
-
-        .modal-section:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-
-        .modal-section h3 {
-            font-size: 1.4rem;
-            margin-bottom: 15px;
-            color: var(--accent);
-        }
-
-        .modal-section .content {
-            line-height: 1.6;
-            color: var(--text);
-        }
-
-        .subject-details-list {
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        .assessment-item {
+            background: var(--card-background);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
             margin-bottom: 20px;
         }
 
-        .subject-detail-item {
-            background: rgba(52, 152, 219, 0.05);
-            padding: 15px;
+        .assessment-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .assessment-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent) 100%);
+            padding: 15px 20px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .assessment-title {
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .assessment-weight {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 12px;
             border-radius: 12px;
-            border-left: 3px solid var(--accent);
+            font-size: 0.9em;
+            font-weight: 600;
         }
 
-        .subject-detail-item strong {
-            display: block;
-            color: var(--accent);
-            margin-bottom: 5px;
+        .assessment-details {
+            padding: 20px;
         }
 
-        .dark-theme .subject-detail-item {
-            background: rgba(94, 203, 250, 0.05);
+        .assessment-detail-row {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 15px;
+            margin-bottom: 12px;
+            align-items: baseline;
         }
 
-        @keyframes modalSlideIn {
+        .detail-label {
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 0.9em;
+        }
+
+        .detail-value {
+            font-size: 0.95em;
+            line-height: 1.5;
+            color: var(--text);
+        }
+
+        :root {
+            --primary-color: #2196F3;
+            --background-color: #ffffff;
+            --text-color: #333333;
+            --card-background: #ffffff;
+            --border-color: #e0e0e0;
+            --hover-color: #f5f5f5;
+            --modal-backdrop: rgba(0, 0, 0, 0.5);
+        }
+
+        .dark-theme {
+            --primary-color: #64B5F6;
+            --background-color: #121212;
+            --text-color: #ffffff;
+            --card-background: #1E1E1E;
+            --border-color: #333333;
+            --hover-color: #2D2D2D;
+            --modal-backdrop: rgba(0, 0, 0, 0.8);
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .app {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Search box styles */
+        .search-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            flex-grow: 1;
+            margin-right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 10px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 16px;
+            background-color: var(--card-background);
+            color: var(--text-color);
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        /* Theme toggle styles */
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toggle-track {
+            width: 48px;
+            height: 24px;
+            background-color: var(--border-color);
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .toggle-thumb {
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
+        }
+
+        .dark-theme .toggle-thumb {
+            transform: translateX(24px);
+        }
+
+        /* Progress bar styles */
+        .progress-container {
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background-color: var(--border-color);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--primary-color);
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            margin-top: 8px;
+            text-align: center;
+            font-size: 14px;
+            color: var (--text-color);
+        }
+
+        /* Card container and card styles */
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 20px 0;
+        }
+
+        .course-card {
+            background-color: var(--card-background);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+
+        .course-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .card-header h2 {
+            margin: 0;
+            font-size: 18px;
+            color: var(--primary-color);
+        }
+
+        .card-header p {
+            margin: 5px 0 0;
+            font-size: 14px;
+            color: var(--text-color);
+        }
+
+        .card-body {
+            padding: 15px;
+        }
+
+        .assessment-preview {
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .view-more {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: var (--primary-color);
+            font-size: 14px;
+        }
+
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--modal-backdrop);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: var(--card-background);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 1200px;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 24px;
+            color: var(--primary-color);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var (--text-color);
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            gap: 20px;
+        }
+
+        .modal-main {
+            flex: 2;
+            min-width: 0;
+        }
+
+        .modal-sidebar {
+            flex: 1;
+            min-width: 300px;
+            border-left: 1px solid var(--border-color);
+            padding-left: 20px;
+        }
+
+        .modal-section {
+            margin-bottom: 30px;
+        }
+
+        .modal-section h3 {
+            margin: 0 0 15px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-section h3 i {
+            font-size: 0.9em;
+        }
+
+        /* Learning outcomes styles */
+        .learning-outcome {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: var(--hover-color);
+            border-radius: 4px;
+        }
+
+        .learning-outcome-number {
+            min-width: 30px;
+            height: 30px;
+            background-color: var (--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .learning-outcome-text {
+            flex: 1;
+        }
+
+        /* Assessment grid styles */
+        .assessment-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .assessment-item {
+            border: 1px solid var (--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .assessment-header {
+            background-color: var(--hover-color);
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .assessment-title {
+            font-weight: bold;
+        }
+
+        .assessment-weight {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .assessment-details {
+            padding: 15px;
+        }
+
+        .assessment-details p {
+            margin: 5px 0;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .modal-body {
+                flex-direction: column;
+            }
+
+            .modal-sidebar {
+                border-left: none;
+                border-top: 1px solid var(--border-color);
+                padding-left: 0;
+                padding-top: 20px;
+            }
+        }
+
+        .loading-spinner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background-color: var(--error-light);
+            color: var(--error);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .assessment-item {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .assessment-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .assessment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .assessment-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+        }
+
+        .assessment-weight {
+            background: var(--primary-light);
+            color: var(--primary-color);
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .assessment-details {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .assessment-detail-row {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 1rem;
+            align-items: baseline;
+        }
+
+        .detail-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .detail-value {
+            color: var(--text-primary);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .no-assessments {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 2rem;
+            font-style: italic;
+        }
+
+        @keyframes slideIn {
             from {
                 opacity: 0;
-                transform: translateY(-20px);
+                transform: translateY(-10px);
             }
             to {
                 opacity: 1;
                 transform: translateY(0);
             }
         }
+
+        .loading-spinner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            color: #e74c3c;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .assessment-item {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+            overflow: hidden;
+            transition: transform 0.2s ease;
+        }
+
+        .assessment-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .assessment-header {
+            background: #f8f9fa;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+        }
+
+        .assessment-title {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .assessment-weight {
+            background: #3498db;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.9em;
+        }
+
+        .assessment-details {
+            padding: 1rem;
+        }
+
+        .assessment-detail-row {
+            display: flex;
+            margin-bottom: 0.5rem;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            width: 100px;
+            color: #7f8c8d;
+        }
+
+        .detail-value {
+            flex: 1;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            color: white;
+            font-size: 0.9em;
+        }
+
+        .no-assessments {
+            text-align: center;
+            padding: 2rem;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        .course-code {
+            color: #7f8c8d;
+            font-size: 1.1em;
+            margin-top: -0.5rem;
+        }
+
+        .course-details {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .assessments-container {
+            margin-top: 1rem;
+        }
+
+        .loading-spinner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .error-message {
+            color: #e74c3c;
+            text-align: center;
+            padding: 1rem;
+            background: #fde8e8;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+
+        .assessments-container {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .assessment-item {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            transition: transform 0.2s ease;
+        }
+
+        .assessment-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .course-code {
+            color: #6c757d;
+            font-size: 0.9em;
+            margin-bottom: 1rem;
+        }
+
+        .course-details {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Course Assessment Dashboard</h1>
-            <p class="app-description">Analyze and track assessment details across your university courses. Filter by assessment types, work requirements, and search for specific courses.</p>
-            <button id="fetchBtn"><i class="fas fa-download"></i> Import Courses</button>
-        </header>
-        
-        <div class="loading-spinner" id="loadingSpinner">
-            <div class="spinner"></div>
-            <div class="loading-progress">
-                <p id="loadingStatus">Loading your courses...</p>
-                <div id="loadingErrors" class="loading-errors"></div>
-                <div class="progress-container">
-                    <div class="progress-bar" id="loadingProgress"></div>
+    <div class="app">
+        <div class="search-container">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search courses...">
+                <button onclick="searchCourses()">Search</button>
+            </div>
+            <div class="theme-toggle">
+                <span>🌞</span>
+                <div class="toggle-track" onclick="toggleTheme()">
+                    <div class="toggle-thumb"></div>
+                </div>
+                <span>🌙</span>
+            </div>
+        </div>
+
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+            </div>
+            <div class="progress-text">Loading courses...</div>
+        </div>
+
+        <div class="card-container" id="courseContainer"></div>
+    </div>
+
+    <!-- Modal Template -->
+    <div id="courseModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="courseDetails">
+                <div id="loadingSpinner" class="loading-spinner">
+                    <div class="spinner"></div>
+                    <p>Loading course details...</p>
+                </div>
+                <div id="courseContent" style="display: none;">
+                    <h2 id="modalCourseTitle"></h2>
+                    <p class="course-code" id="modalCourseCode"></p>
+                    <div class="course-details">
+                        <p><strong>Professor:</strong> <span id="modalProfessor"></span></p>
+                        <p><strong>Schedule:</strong> <span id="modalSchedule"></span></p>
+                    </div>
+                    <h3>Assessments</h3>
+                    <div id="assessmentsContainer" class="assessments-container">
+                        <!-- Assessment items will be dynamically inserted here -->
+                    </div>
+                </div>
+                <div id="errorMessage" class="error-message" style="display: none">
+                    Failed to load course details. Please try again later.
                 </div>
             </div>
         </div>
-        
-        <div class="controls">
-            <div class="filter-section">
-                <h3><i class="fas fa-clipboard-list"></i> Assessment Types</h3>
-                <div class="checkbox-container" id="assessmentTypeFilters"></div>
-            </div>
-            
-            <div class="filter-section">
-                <h3><i class="fas fa-users"></i> Work Types</h3>
-                <div class="checkbox-container" id="workTypeFilters"></div>
-            </div>
-            
-            <div class="filter-section">
-                <h3><i class="fas fa-search"></i> Search</h3>
-                <input type="text" id="searchInput" class="search-input" placeholder="Search by course name or code...">
-                <button class="clear-filters" id="clearFilters"><i class="fas fa-times"></i> Clear Filters</button>
-            </div>
-            
-            <div class="filter-section">
-                <h3><i class="fas fa-palette"></i> Theme</h3>
-                <button id="themeToggle"><i class="fas fa-moon"></i> Dark Mode</button>
-            </div>
-        </div>
-        
-        <div class="card-container" id="courseContainer">
-            <!-- Cards will be populated here -->
-        </div>
     </div>
-    <div id="importDialog" class="import-dialog" style="display:none;">
-        <h3>Import Courses</h3>
-        <div class="import-help">
-            <p>Paste your course list below. The system will automatically extract course codes (5-digit numbers) from any text format, including:</p>
-            <ul>
-                <li>Handbook pages</li>
-                <li>Course lists</li>
-                <li>Study planners</li>
-                <li>Plain text with course codes</li>
-            </ul>
-        </div>
-        <textarea id="importText" placeholder="Example:
-Autumn session
-33130 Mathematics 1     6cp
-41039 Programming 1     6cp
-..."></textarea>
-        <button onclick="processImport()">Import</button>
-        <button onclick="closeImport()" style="background:#666">Cancel</button>
-    </div>
-    <div id="importOverlay" class="overlay" style="display:none;"></div>
 
     <script>
-    let courses = [];
-    // Filter state: Map<filterName, 0|1|-1> (0=neutral, 1=include, -1=exclude)
-    let assessmentTypeFilterState = new Map();
-    let workTypeFilterState = new Map();
+        let darkTheme = false;
 
-    const BACKEND_URL = "https://course-dashboard-backend.onrender.com";
-
-    async function fetchAndInit(codes) {
-        const spinner = document.getElementById('loadingSpinner');
-        const status = document.getElementById('loadingStatus');
-        const progress = document.getElementById('loadingProgress');
-        const errorsDiv = document.getElementById('loadingErrors');
-        
-        spinner.style.display = 'block';
-        progress.style.width = '0%';
-        errorsDiv.innerHTML = '';
-        let errors = [];
-        let successfulCourses = [];
-        
-        try {
-            const resp = await fetch(`${BACKEND_URL}/api/courses`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ subject_codes: codes })
-            });
-
-            if (!resp.ok) {
-                throw new Error(`HTTP error! status: ${resp.status}`);
-            }
-
-            const reader = resp.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-
-            while (true) {
-                const {value, done} = await reader.read();
-                if (done) break;
-                
-                buffer += decoder.decode(value, {stream: true});
-                const lines = buffer.split('\n');
-                buffer = lines.pop(); // Keep incomplete line in buffer
-                
-                for (const line of lines) {
-                    if (!line.trim()) continue;
-                    try {
-                        const data = JSON.parse(line);
-                        
-                        if (data.type === 'progress') {
-                            // Set exact progress width based on completed/total ratio
-                            const percentage = (data.completed / data.total) * 100;
-                            progress.style.width = `${percentage}%`;
-                            status.textContent = `Processed ${data.completed} of ${data.total} courses`;
-                            
-                            if (data.error) {
-                                errors.push(`${data.code}: ${data.error}`);
-                                errorsDiv.innerHTML = errors.map(err => 
-                                    `<div class="error-item">${err}</div>`
-                                ).join('');
-                            }
-                        }
-                        else if (data.type === 'complete') {
-                            // Process successful courses
-                            successfulCourses = data.results
-                                .filter(c => !c.error)
-                                .map(c => ({
-                                    code: c.code,
-                                    name: c.title,
-                                    prerequisites: c.requisites,
-                                    assessments: (c.assessment || []).map(a => ({
-                                        name: a.title,
-                                        type: a.details.Type || 'Unknown',
-                                        groupwork: determineGroupwork(a.details.Groupwork),
-                                        weight: parseInt((a.details.Weight || '0').replace(/%/g, ''), 10) || 0,
-                                        length: a.details.Length || 'Not specified',
-                                        intent: a.details.Intent || ''
-                                    }))
-                                }));
-                            
-                            // Update courses and initialize dashboard
-                            courses = successfulCourses;
-                            if (courses.length > 0) {
-                                initializeDashboard();
-                            }
-                        }
-                    } catch (e) {
-                        console.error('Error processing message:', e, 'Line:', line);
-                    }
-                }
-            }
-            
-            // Show final status
-            status.textContent = `Loaded ${successfulCourses.length} courses` + 
-                (errors.length ? ` (${errors.length} failed)` : '');
-                
-        } catch (e) {
-            console.error('Fetch error:', e);
-            status.textContent = 'Failed to fetch courses';
-            errorsDiv.innerHTML = `<div class="error-item">Network error: ${e.message}</div>`;
-        } finally {
-            setTimeout(() => {
-                spinner.style.display = errors.length > 0 ? 'block' : 'none';
-            }, errors.length > 0 ? 3000 : 500);
-        }
-    }
-
-    // Helper function to determine groupwork status
-    function determineGroupwork(groupworkText) {
-        if (!groupworkText) return 'Individual';
-        
-        groupworkText = groupworkText.toLowerCase();
-        if (groupworkText.includes('individual') || groupworkText === 'no') {
-            return 'Individual';
-        } else if (groupworkText.includes('group') || 
-                groupworkText.includes('team') || 
-                groupworkText.includes('pair')) {
-            return 'Group';
-        }
-        
-        // Try to get group size if specified
-        const sizeMatch = groupworkText.match(/\d+/);
-        if (sizeMatch) {
-            return `Group (${sizeMatch[0]})`;
-        }
-        
-        return groupworkText;
-    }
-
-    document.getElementById('fetchBtn').addEventListener('click', () => {
-        document.getElementById('importDialog').style.display = '';
-        document.getElementById('importOverlay').style.display = '';
-    });
-
-    function closeImport() {
-        document.getElementById('importDialog').style.display = 'none';
-        document.getElementById('importOverlay').style.display = 'none';
-        document.getElementById('importText').value = '';
-    }
-
-    async function processImport() {
-        const input = document.getElementById('importText').value;
-        if (!input) return;
-
-        // Extract all 5-digit numbers from any text
-        const codes = [...new Set(input.match(/\b\d{5}\b/g))];
-        
-        if (codes.length === 0) {
-            alert('No valid course codes found. Course codes are 5-digit numbers.');
-            return;
+        function toggleTheme() {
+            darkTheme = !darkTheme;
+            document.body.classList.toggle('dark-theme');
         }
 
-        closeImport();
-        // Ensure loading spinner is visible and progress bar is reset
-        const spinner = document.getElementById('loadingSpinner');
-        const progress = document.getElementById('loadingProgress');
-        spinner.style.display = 'block';
-        progress.style.width = '0%';
-        
-        await fetchAndInit(codes);
-    }
-
-    function initializeDashboard() {
-        renderFilters();
-        renderCourses();
-    }
-
-    function renderFilters() {
-        console.log('renderFilters called with courses:', courses); // Debug log
-        const assessmentTypeFilters = document.getElementById('assessmentTypeFilters');
-        const workTypeFilters = document.getElementById('workTypeFilters');
-        const allAssessmentTypes = new Set();
-        const allWorkTypes = new Set();
-
-        courses.forEach(course => {
-            course.assessments.forEach(a => {
-                allAssessmentTypes.add(a.type);
-                allWorkTypes.add(a.groupwork);
-            });
-        });
-
-        console.log('Found assessment types:', Array.from(allAssessmentTypes)); // Debug log
-        console.log('Found work types:', Array.from(allWorkTypes)); // Debug log
-
-        function createPill(label, filterMap, container) {
-            let state = filterMap.get(label) || 0;
-            const pill = document.createElement('span');
-            pill.className = 'filter-pill';
-            if (state === 1) pill.classList.add('included');
-            if (state === -1) pill.classList.add('excluded');
-            pill.tabIndex = 0;
-            pill.textContent = label;
-            if (state === -1) {
-                const x = document.createElement('span');
-                x.className = 'pill-x';
-                x.textContent = '✕';
-                pill.appendChild(x);
-            }
-            pill.addEventListener('click', () => {
-                // Cycle: 0 -> 1 -> -1 -> 0
-                let newState = state === 0 ? 1 : (state === 1 ? -1 : 0);
-                if (newState === 0) filterMap.delete(label);
-                else filterMap.set(label, newState);
-                renderFilters();
-                renderCourses();
-            });
-            pill.addEventListener('keydown', (e) => {
-                if (e.key === ' ' || e.key === 'Enter') {
-                    pill.click();
-                    e.preventDefault();
-                }
-            });
-            container.appendChild(pill);
-        }
-
-        assessmentTypeFilters.innerHTML = '';
-        Array.from(allAssessmentTypes).sort().forEach(t => createPill(t, assessmentTypeFilterState, assessmentTypeFilters));
-        workTypeFilters.innerHTML = '';
-        Array.from(allWorkTypes).sort().forEach(w => createPill(w, workTypeFilterState, workTypeFilters));
-    }
-
-    function renderCourses() {
-        console.log('renderCourses called with courses:', courses); // Debug log
-        const container = document.getElementById('courseContainer');
-        const searchVal = document.getElementById('searchInput').value.toLowerCase();
-        container.innerHTML = '';
-
-        // Returns true if the value is included, false if excluded, or null if neutral
-        function getFilterState(val, map) {
-            if (map.size === 0) return null;
-            if (map.get(val) === 1) return true;
-            if (map.get(val) === -1) return false;
-            return null;
-        }
-
-        // Returns true if the assessment matches all include filters and none of the exclude filters
-        function assessmentMatchesFilters(a) {
-            // Assessment Type
-            const typeState = getFilterState(a.type, assessmentTypeFilterState);
-            if (typeState === false) return false;
-            // Work Type
-            const workState = getFilterState(a.groupwork, workTypeFilterState);
-            if (workState === false) return false;
-
-            // If there are any include filters, must match them
-            if ([...assessmentTypeFilterState.values()].includes(1) && typeState !== true) return false;
-            if ([...workTypeFilterState.values()].includes(1) && workState !== true) return false;
-
-            return true;
-        }
-
-        // Exclude course if ANY assessment matches an exclude filter
-        function courseIsExcluded(course) {
-            // Assessment type excludes
-            const typeExcludes = [...assessmentTypeFilterState.entries()].filter(([k, v]) => v === -1).map(([k]) => k);
-            if (typeExcludes.length > 0 && course.assessments.some(a => typeExcludes.includes(a.type))) return true;
-            // Work type excludes
-            const workExcludes = [...workTypeFilterState.entries()].filter(([k, v]) => v === -1).map(([k]) => k);
-            if (workExcludes.length > 0 && course.assessments.some(a => workExcludes.includes(a.groupwork))) return true;
-            return false;
-        }
-
-        // Only show courses where at least one assessment matches all include filters and none match any exclude filter
-        const filteredCourses = courses.filter(course => {
-            if (searchVal && !(course.name.toLowerCase().includes(searchVal) || course.code.includes(searchVal))) {
-                return false;
-            }
-            if (courseIsExcluded(course)) return false;
-
-            // If there are any include filters, require at least one assessment matches all includes
-            const hasIncludeType = [...assessmentTypeFilterState.values()].includes(1);
-            const hasIncludeWork = [...workTypeFilterState.values()].includes(1);
-            if (hasIncludeType || hasIncludeWork) {
-                return course.assessments.some(a => assessmentMatchesFilters(a));
-            }
-            // If no includes, just require not excluded
-            return true;
-        });
-
-        console.log('Filtered courses:', filteredCourses); // Debug log
-
-        if (filteredCourses.length === 0) {
-            console.log('No courses to display'); // Debug log
-            const empty = document.createElement('div');
-            empty.className = 'empty-state';
-            empty.textContent = 'No courses match the filters.';
-            container.appendChild(empty);
-            return;
-        }
-
-        filteredCourses.forEach(course => {
-            // Determine main work type for background
-            const mainWork = getMainWorkType(course);
-            const card = document.createElement('div');
-            card.className = 'course-card';
-            card.setAttribute('data-work', mainWork);
-
-            const header = document.createElement('div');
-            header.className = 'card-header';
-            header.innerHTML = `<h2>${course.code}</h2><p>${course.name}</p>`;
-
-            const body = document.createElement('div');
-            body.className = 'card-body';
-            
-            // Add prerequisites section
-            const prereqs = document.createElement('div');
-            prereqs.className = 'prerequisites';
-            prereqs.innerHTML = `
-                <p><strong>Prerequisites:</strong> ${course.prerequisites}</p>
-            `;
-            body.appendChild(prereqs);
-            
-            // Add a divider
-            const divider = document.createElement('hr');
-            divider.style.borderTop = '1px solid #eee';
-            divider.style.margin = '10px 0';
-            body.appendChild(divider);
-            
-            // Assessments section
-            const assessmentsTitle = document.createElement('h3');
-            assessmentsTitle.textContent = 'Assessments';
-            assessmentsTitle.style.margin = '0 0 10px 0';
-            assessmentsTitle.style.fontSize = '16px';
-            body.appendChild(assessmentsTitle);
-            
-            course.assessments.forEach(a => {
-                const item = document.createElement('div');
-                item.className = 'assessment-item';
-                
-                // Determine groupwork tag color class
-                let groupworkClass = 'tag-individual';
-                if (a.groupwork.toLowerCase().includes('group')) {
-                    groupworkClass = 'tag-group';
-                }
-                
-                // Neon tag for assessment type
-                const typeTagClass = getTypeTagClass(a.type);
-
-                // Add length next to the intent/description, styled as a subtle pill below or beside
-                item.innerHTML = `
-                    <div class="assessment-header">
-                        <span class="assessment-title">${a.name}</span>
-                        <span class="assessment-weight">${a.weight}%</span>
+        function createCourseCard(course) {
+            return `
+                <div class="course-card" onclick="showCourseDetails(${JSON.stringify(course).replace(/"/g, '&quot;')})">
+                    <div class="card-header">
+                        <h2>${course.code}</h2>
+                        <p>${course.title}</p>
                     </div>
-                    <div class="assessment-intent">
-                        <span>${a.intent}</span>
-                        ${a.length && a.length !== 'Not specified' ? `<span class="length-pill subtle">${a.length}</span>` : ''}
+                    <div class="card-body">
+                        <div class="assessment-preview">
+                            ${course.credit_points} • ${course.result_type}
+                        </div>
+                        <div class="view-more">
+                            <span>View details</span>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showCourseDetails(course) {
+            document.getElementById('modalTitle').textContent = `${course.code} - ${course.title}`;
+            document.getElementById('modalOverview').textContent = course.overview;
+            document.getElementById('modalCredits').textContent = course.credit_points;
+            document.getElementById('modalResultType').textContent = course.result_type;
+            document.getElementById('modalRequisites').textContent = course.requisites || 'None';
+            document.getElementById('modalMinRequirements').textContent = course.minimum_requirements;
+            document.getElementById('modalTexts').textContent = course.recommended_texts;
+            document.getElementById('modalContent').textContent = course.content_topics;
+
+            // Learning outcomes
+            const learningOutcomesHtml = course.learning_outcomes.map(outcome => `
+                <div class="learning-outcome">
+                    <div class="learning-outcome-number">${outcome.no}</div>
+                    <div class="learning-outcome-text">${outcome.text}</div>
+                </div>
+            `).join('');
+            document.getElementById('modalLearningOutcomes').innerHTML = learningOutcomesHtml;
+
+            // Assessment tasks
+            const assessmentHtml = course.assessment.map(task => `
+                <div class="assessment-item">
+                    <div class="assessment-header">
+                        <span class="assessment-title">${task.title}</span>
+                        <span class="assessment-weight">${task.details.Weight || 'N/A'}</span>
                     </div>
                     <div class="assessment-details">
-                        <span class="tag ${typeTagClass}">${a.type}</span>
-                        <span class="tag ${groupworkClass}">${a.groupwork}</span>
+                        <div class="assessment-detail-row">
+                            <span class="detail-label">Length:</span>
+                            <span class="detail-value">${task.details.Length || 'N/A'}</span>
+                        </div>
+                        <div class="assessment-detail-row">
+                            <span class="detail-label">Intent:</span>
+                            <span class="detail-value">${task.details.Intent || 'N/A'}</span>
+                        </div>
+                        <div class="assessment-detail-row">
+                            <span class="detail-label">Criteria:</span>
+                            <span class="detail-value">${task.details.Criteria || 'N/A'}</span>
+                        </div>
                     </div>
-                `;
-                body.appendChild(item);
+                </div>
+            `).join('');
+            document.getElementById('modalAssessment').innerHTML = assessmentHtml;
+
+            document.getElementById('courseModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('courseModal').classList.remove('show');
+        }
+
+        function searchCourses() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filteredCourses = courses.filter(course => 
+                course.code.toLowerCase().includes(searchTerm) ||
+                course.title.toLowerCase().includes(searchTerm)
+            );
+            displayCourses(filteredCourses);
+        }
+
+        function displayCourses(coursesToShow) {
+            const container = document.getElementById('courseContainer');
+            container.innerHTML = coursesToShow.map(createCourseCard).join('');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('courseModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // Fetch and display courses
+        let courses = [];
+        fetch('/api/courses')
+            .then(response => response.json())
+            .then(data => {
+                courses = data;
+                displayCourses(courses);
+                document.querySelector('.progress-container').style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.querySelector('.progress-text').textContent = 'Error loading courses';
             });
 
-            card.appendChild(header);
-            card.appendChild(body);
-            container.appendChild(card);
-
-            // Add click event to open modal
-            card.addEventListener('click', () => openModal(course));
-        });
-    }
-
-    document.getElementById('clearFilters').addEventListener('click', () => {
-        assessmentTypeFilterState.clear();
-        workTypeFilterState.clear();
-        document.getElementById('searchInput').value = '';
-        renderFilters();
-        renderCourses();
-    });
-
-    document.getElementById('searchInput').addEventListener('input', () => renderCourses());
-
-    // Theme toggle
-    const themeBtn = document.getElementById('themeToggle');
-    function setTheme(dark) {
-        document.body.classList.toggle('dark-theme', dark);
-        themeBtn.textContent = dark ? '☀️ Light' : '🌙 Dark';
-        localStorage.setItem('theme', dark ? 'dark' : 'light');
-    }
-    themeBtn.addEventListener('click', () => {
-        setTheme(!document.body.classList.contains('dark-theme'));
-    });
-    // On load, set theme from localStorage
-    setTheme(localStorage.getItem('theme') === 'dark');
-
-    // Helper: get main assessment type for subject
-    function getMainAssessmentType(course) {
-        if (!course.assessments || course.assessments.length === 0) return '';
-        // Priority: Project > Laboratory/practical > Presentation > Quiz/test > Examination > Other
-        const typeOrder = [
-            "Project", "Laboratory/practical", "Presentation", "Quiz/test", "Examination"
-        ];
-        let found = '';
-        for (const t of typeOrder) {
-            if (course.assessments.some(a => (a.type||'').toLowerCase().includes(t.toLowerCase()))) {
-                found = t;
-                break;
-            }
+        function showLoading() {
+            const loadingEl = document.createElement('div');
+            loadingEl.className = 'loading-spinner';
+            loadingEl.innerHTML = `
+                <div class="spinner"></div>
+                <p>Loading course data...</p>
+            `;
+            document.querySelector('.modal-body').appendChild(loadingEl);
         }
-        if (!found) {
-            found = (course.assessments[0].type || 'Other');
-        }
-        return found;
-    }
-    // Helper: get tag class for assessment type
-    function getTypeTagClass(type) {
-        const t = (type||'').toLowerCase();
-        if (t.includes('project')) return 'tag-type tag-project';
-        if (t.includes('lab')) return 'tag-type tag-individual';
-        if (t.includes('presentation')) return 'tag-type tag-presentation';
-        if (t.includes('quiz') || t.includes('test')) return 'tag-type tag-type';
-        if (t.includes('exam')) return 'tag-type tag-exam';
-        return 'tag-type tag-other';
-    }
-    // Helper: get main work type for subject
-    function getMainWorkType(course) {
-        if (!course.assessments || course.assessments.length === 0) return '';
-        // Priority: Group > Presentation > Examination > Individual > Other
-        const workOrder = [
-            "Group", "Presentation", "Examination", "Individual"
-        ];
-        let found = '';
-        for (const t of workOrder) {
-            if (course.assessments.some(a => (a.groupwork||'').toLowerCase().includes(t.toLowerCase()))) {
-                found = t;
-                break;
-            }
-        }
-        if (!found) {
-            found = (course.assessments[0].groupwork || 'Other');
-        }
-        return found;
-    }
 
-    // Modal functionality
-    function openModal(course) {
-        const modal = document.createElement('div');
-        modal.className = 'modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>${course.code}</h2>
-                    <p>${course.name}</p>
-                    <button class="modal-close">&times;</button>
+        function hideLoading() {
+            const loadingEl = document.querySelector('.loading-spinner');
+            if (loadingEl) loadingEl.remove();
+        }
+
+        async function fetchCourseDetails(courseId) {
+            const modal = document.getElementById('courseModal');
+            const modalContent = document.getElementById('modalContent');
+            
+            modalContent.innerHTML = `
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <p>Loading course details...</p>
                 </div>
-                <div class="modal-body">
-                    <div class="modal-section">
-                        <h3>Course Details</h3>
-                        <div class="subject-details-list">
-                            <div class="subject-detail-item">
-                                <strong>Credit Points</strong>
-                                <div>${course.credit_points || 'Not specified'}</div>
+            `;
+
+            try {
+                const response = await fetch(`/api/courses/${courseId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch course details');
+                }
+                const courseData = await response.json();
+                displayCourseDetails(courseData);
+            } catch (error) {
+                modalContent.innerHTML = `
+                    <div class="error-message">
+                        <p>Error loading course details. Please try again later.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayCourseDetails(course) {
+            const modalContent = document.getElementById('modalContent');
+            const assessmentsHtml = course.assessments && course.assessments.length > 0
+                ? course.assessments.map(assessment => `
+                    <div class="assessment-item">
+                        <div class="assessment-header">
+                            <span class="assessment-title">${assessment.name}</span>
+                            <span class="assessment-weight">${assessment.weight}%</span>
+                        </div>
+                        <div class="assessment-details">
+                            <div class="assessment-detail-row">
+                                <span class="detail-label">Due Date:</span>
+                                <span class="detail-value">${formatDate(assessment.due_date)}</span>
                             </div>
-                            <div class="subject-detail-item">
-                                <strong>Result Type</strong>
-                                <div>${course.result_type || 'Not specified'}</div>
+                            <div class="assessment-detail-row">
+                                <span class="detail-label">Description:</span>
+                                <span class="detail-value">${assessment.description || 'No description available'}</span>
                             </div>
-                            <div class="subject-detail-item">
-                                <strong>Prerequisites</strong>
-                                <div>${course.prerequisites || 'None'}</div>
+                            <div class="assessment-detail-row">
+                                <span class="detail-label">Status:</span>
+                                <span class="status-badge" style="background-color: ${getStatusColor(assessment.status)}">
+                                    ${assessment.status}
+                                </span>
                             </div>
                         </div>
                     </div>
+                `).join('')
+                : '<div class="no-assessments">No assessments available for this course</div>';
 
-                    ${course.overview ? `
-                        <div class="modal-section">
-                            <h3>Overview</h3>
-                            <div class="content">${course.overview}</div>
-                        </div>
-                    ` : ''}
-
-                    <div class="modal-section">
-                        <h3>Assessments</h3>
-                        <div class="assessment-grid">
-                            ${course.assessments.map(a => `
-                                <div class="subject-detail-item assessment-detail">
-                                    <strong>${a.name} (${a.weight}%)</strong>
-                                    <div class="assessment-tags">
-                                        <span class="tag ${getTypeTagClass(a.type)}">${a.type}</span>
-                                        <span class="tag ${a.groupwork.toLowerCase().includes('group') ? 'tag-group' : 'tag-individual'}">${a.groupwork}</span>
-                                    </div>
-                                    ${a.length ? `<div class="assessment-length">Length: ${a.length}</div>` : ''}
-                                    ${a.intent ? `<div class="assessment-intent">${a.intent}</div>` : ''}
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-
-                    ${course.learning_outcomes && course.learning_outcomes.length > 0 ? `
-                        <div class="modal-section">
-                            <h3>Learning Outcomes</h3>
-                            <div class="learning-outcomes-list">
-                                ${course.learning_outcomes.map(lo => `
-                                    <div class="subject-detail-item">
-                                        <strong>${lo.no}</strong>
-                                        <div>${lo.text}</div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-
-                    ${course.content_topics ? `
-                        <div class="modal-section">
-                            <h3>Content Topics</h3>
-                            <div class="content">${course.content_topics}</div>
-                        </div>
-                    ` : ''}
-
-                    ${course.teaching_strategies ? `
-                        <div class="modal-section">
-                            <h3>Teaching Strategies</h3>
-                            <div class="content">${course.teaching_strategies}</div>
-                        </div>
-                    ` : ''}
-
-                    ${course.minimum_requirements ? `
-                        <div class="modal-section">
-                            <h3>Minimum Requirements</h3>
-                            <div class="content">${course.minimum_requirements}</div>
-                        </div>
-                    ` : ''}
-
-                    ${course.recommended_texts ? `
-                        <div class="modal-section">
-                            <h3>Recommended Texts</h3>
-                            <div class="content">${course.recommended_texts}</div>
-                        </div>
-                    ` : ''}
+            modalContent.innerHTML = `
+                <h2>${course.name}</h2>
+                <p class="course-code">${course.code}</p>
+                <div class="course-details">
+                    <p><strong>Instructor:</strong> ${course.instructor}</p>
+                    <p><strong>Schedule:</strong> ${course.schedule}</p>
+                    <p><strong>Room:</strong> ${course.room}</p>
                 </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        modal.style.display = 'block';
+                <h3>Assessments</h3>
+                <div class="assessments-container">
+                    ${assessmentsHtml}
+                </div>
+            `;
+        }
 
-        // Add some styling for the new elements
-        const style = document.createElement('style');
-        style.textContent = `
-            .assessment-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                gap: 20px;
-                margin-top: 15px;
+        function formatDate(dateString) {
+            if (!dateString) return 'Not specified';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'Upcoming': '#3498db',
+                'In Progress': '#f1c40f',
+                'Completed': '#2ecc71',
+                'Past Due': '#e74c3c'
+            };
+            return colors[status] || '#95a5a6';
+        }
+
+        async function fetchCourseDetails(courseId) {
+            showLoading();
+            try {
+                const response = await fetch(`/api/courses/${courseId}`);
+                if (!response.ok) throw new Error('Failed to fetch course details');
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error fetching course details:', error);
+                showError('Failed to load course details. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function showError(message) {
+            const errorEl = document.createElement('div');
+            errorEl.className = 'error-message';
+            errorEl.textContent = message;
+            document.querySelector('.modal-body').appendChild(errorEl);
+            setTimeout(() => errorEl.remove(), 5000);
+        }
+
+        function renderAssessments(assessments) {
+            if (!assessments?.length) {
+                return '<p class="no-assessments">No assessments available for this course.</p>';
             }
 
-            .assessment-detail {
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-            }
+            return assessments.map(assessment => `
+                <div class="assessment-item" data-id="${assessment.id}">
+                    <div class="assessment-header">
+                        <span class="assessment-title">${assessment.title}</span>
+                        <span class="assessment-weight">${assessment.weight}%</span>
+                    </div>
+                    <div class="assessment-details">
+                        ${renderAssessmentDetails(assessment)}
+                    </div>
+                </div>
+            `).join('');
+        }
 
-            .assessment-tags {
-                display: flex;
-                gap: 8px;
-                flex-wrap: wrap;
-            }
+        function renderAssessmentDetails(assessment) {
+            const details = [
+                { label: 'Due Date', value: formatDate(assessment.dueDate) },
+                { label: 'Type', value: assessment.type },
+                { label: 'Status', value: getStatusBadge(assessment.status) },
+                { label: 'Description', value: assessment.description }
+            ];
 
-            .assessment-length {
-                font-size: 0.9em;
-                color: var(--text);
-                opacity: 0.8;
-            }
+            return details.map(detail => `
+                <div class="assessment-detail-row">
+                    <span class="detail-label">${detail.label}:</span>
+                    <span class="detail-value">${detail.value}</span>
+                </div>
+            `).join('');
+        }
 
-            .learning-outcomes-list {
-                display: grid;
-                gap: 15px;
-                margin-top: 15px;
-            }
+        function formatDate(dateString) {
+            if (!dateString) return 'Not specified';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
 
-            .content {
-                white-space: pre-line;
-                line-height: 1.6;
-            }
-        `;
-        document.head.appendChild(style);
-
-        modal.querySelector('.modal-close').addEventListener('click', () => {
-            modal.style.display = 'none';
-            document.body.removeChild(modal);
-            document.head.removeChild(style);
-        });
-
-        window.addEventListener('click', (event) => {
-            if (event.target === modal) {
-                modal.style.display = 'none';
-                document.body.removeChild(modal);
-                document.head.removeChild(style);
-            }
-        });
-
-        // Add keyboard navigation
-        modal.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                modal.querySelector('.modal-close').click();
-            }
-        });
-    }
+        function getStatusBadge(status) {
+            const statusColors = {
+                'pending': 'var(--warning)',
+                'completed': 'var(--success)',
+                'overdue': 'var(--error)'
+            };
+            
+            return `<span class="status-badge" style="background-color: ${statusColors[status] || 'var(--primary-color)'}">
+                ${status.charAt(0).toUpperCase() + status.slice(1)}
+            </span>`;
+        }
     </script>
 </body>
 </html>
