@@ -779,9 +779,10 @@
         .modal-content {
             background: var(--card-bg);
             margin: 40px auto;
-            padding: 25px;
-            border-radius: 12px;
-            max-width: 800px;
+            padding: 30px;
+            border-radius: 16px;
+            max-width: 900px;
+            width: 90%;
             position: relative;
             box-shadow: var(--card-shadow);
             transition: background var(--transition-speed);
@@ -847,6 +848,34 @@
             color: var(--text);
             opacity: 0.6;
             font-style: italic;
+        }
+
+        .overview-section {
+            background: var(--prereq-bg);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 0 -10px 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .overview-content {
+            font-size: 1.05rem;
+            line-height: 1.7;
+            color: var(--text);
+        }
+
+        .overview-paragraph {
+            margin-bottom: 1.2em;
+            text-align: justify;
+        }
+
+        .overview-paragraph:last-child {
+            margin-bottom: 0;
+        }
+
+        .dark-theme .overview-section {
+            background: rgba(255, 255, 255, 0.03);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
 
     </style>
@@ -1228,35 +1257,6 @@ Autumn session
                 pill.appendChild(x);
             }
             pill.addEventListener('click', () => {
-                let newState = state === 0 ? 1 : (state === 1 ? -1 : 0);
-                if (newState === 0) filterMap.delete(label);
-                else filterMap.set(label, newState);
-                renderFilters();
-                renderCourses();
-            });
-            pill.addEventListener('keydown', (e) => {
-                if (e.key === ' ' || e.key === 'Enter') {
-                    pill.click();
-                    e.preventDefault();
-                }
-            });
-            container.appendChild(pill);
-        }
-
-        assessmentTypeFilters.innerHTML = '';
-        Array.from(allAssessmentTypes).sort().forEach(t => createPill(t, assessmentTypeFilterState, assessmentTypeFilters));
-        
-        workTypeFilters.innerHTML = '';
-        Array.from(allWorkTypes).sort().forEach(w => createPill(w, workTypeFilterState, workTypeFilters));
-    }
-
-    function renderCourses() {
-        const container = document.getElementById('cardContainer');
-        if (!container) {
-            console.error('Card container element not found. Ensure element with ID "cardContainer" exists.');
-            return;
-        }
-
         const searchVal = document.getElementById('searchInput')?.value.toLowerCase() || '';
         
         if (!courses || courses.length === 0) {
@@ -1427,6 +1427,17 @@ Autumn session
         }
     }
 
+    function formatOverview(text) {
+        if (!text) return '';
+        
+        // Split into paragraphs and preserve meaningful line breaks
+        return text.split(/\n{2,}/)  // Split on 2 or more newlines for paragraphs
+            .map(p => p.trim())
+            .filter(p => p)  // Remove empty paragraphs
+            .map(p => `<p class="overview-paragraph">${p.replace(/\n/g, '<br>')}</p>`)
+            .join('\n');
+    }
+
     function showCourseDetail(course) {
         try {
             const modal = document.getElementById('courseDetailModal');
@@ -1444,17 +1455,51 @@ Autumn session
                 </div>
             `;
 
-            // Overview section
+            // Overview section with improved formatting
             if (course.overview) {
                 html += `
-                    <div class="detail-section">
+                    <div class="detail-section overview-section">
                         <h3>Overview</h3>
-                        <p>${course.overview}</p>
+                        <div class="overview-content">
+                            ${formatOverview(course.overview)}
+                        </div>
                     </div>
                 `;
             }
 
-            // Prerequisites
+            // Add CSS for overview formatting
+            const style = document.createElement('style');
+            if (!document.querySelector('#overview-styles')) {
+                style.id = 'overview-styles';
+                style.textContent = `
+                    .overview-section {
+                        background: var(--prereq-bg);
+                        border-radius: 8px;
+                        padding: 20px;
+                        margin-bottom: 30px;
+                    }
+                    
+                    .overview-content {
+                        font-size: 1rem;
+                        line-height: 1.6;
+                    }
+                    
+                    .overview-paragraph {
+                        margin-bottom: 1em;
+                    }
+                    
+                    .overview-paragraph:last-child {
+                        margin-bottom: 0;
+                    }
+                    
+                    .dark-theme .overview-section {
+                        background: rgba(255, 255, 255, 0.05);
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            // Rest of the sections
             if (course.requisites) {
                 html += `
                     <div class="detail-section">
