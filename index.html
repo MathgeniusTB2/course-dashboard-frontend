@@ -288,15 +288,25 @@
             transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.4s;
             border: 2px solid transparent;
             position: relative;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         
-        .course-card:hover {
+        .course-card:hover, .course-card:focus {
             transform: translateY(-5px);
             box-shadow: 0 16px 40px rgba(0,0,0,0.15);
+            outline: none;
         }
         
-        .dark-theme .course-card:hover {
+        .course-card:active {
+            transform: translateY(-2px);
+            transition: transform 0.1s;
+        }
+        
+        .dark-theme .course-card:hover, .dark-theme .course-card:focus {
             box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+            border-color: var(--accent);
         }
         
         .card-header {
@@ -1676,30 +1686,8 @@ Autumn session
             }).join('');
 
             // Add click handlers after rendering
-            document.querySelectorAll('.course-card').forEach(card => {
-                card.addEventListener('click', function() {
-                    const courseData = this.getAttribute('data-course');
-                    if (courseData) {
-                        try {
-                            const course = JSON.parse(decodeURIComponent(courseData));
-                            showCourseDetail(course);
-                        } catch (err) {
-                            console.error('Error parsing course data:', err);
-                        }
-                    }
-                });
-            });
+            attachCardHandlers();
 
-            // Make the cards focusable and handle keyboard events
-            document.querySelectorAll('.course-card').forEach(card => {
-                card.setAttribute('tabindex', '0');
-                card.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        this.click();
-                    }
-                });
-            });
         } catch (error) {
             console.error('Error rendering courses:', error);
             container.innerHTML = `
@@ -2039,21 +2027,6 @@ Autumn session
         return truncated + '...';
     }
 
-    // Helper function to truncate text with ellipsis
-    function truncateText(text, maxLength) {
-        if (!text || typeof text !== 'string' || text.length <= maxLength) return text;
-        
-        // Try to truncate at the last complete word
-        let truncated = text.substring(0, maxLength);
-        let lastSpace = truncated.lastIndexOf(' ');
-        
-        if (lastSpace > maxLength * 0.8) { // Only truncate at word if we don't lose too much text
-            truncated = truncated.substring(0, lastSpace);
-        }
-        
-        return truncated + '...';
-    }
-
     function formatOverviewText(overview) {
         if (!overview) return '';
         
@@ -2097,6 +2070,48 @@ Autumn session
         }
         
         return html;
+    }
+
+    // Add click handlers to course cards
+    function attachCardHandlers() {
+        document.querySelectorAll('.course-card').forEach(card => {
+            // Add click handler
+            card.addEventListener('click', function(e) {
+                const courseData = this.getAttribute('data-course');
+                if (courseData) {
+                    try {
+                        const course = JSON.parse(decodeURIComponent(courseData));
+                        showCourseDetail(course);
+                    } catch (err) {
+                        console.error('Error parsing course data:', err);
+                    }
+                }
+            });
+
+            // Make focusable and add keyboard handler
+            card.setAttribute('tabindex', '0');
+            card.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.click();
+                }
+            });
+        });
+    }
+
+    // Helper function to truncate text with ellipsis
+    function truncateText(text, maxLength) {
+        if (!text || typeof text !== 'string' || text.length <= maxLength) return text;
+        
+        // Try to truncate at the last complete word
+        let truncated = text.substring(0, maxLength);
+        let lastSpace = truncated.lastIndexOf(' ');
+        
+        if (lastSpace > maxLength * 0.8) { // Only truncate at word if we don't lose too much text
+            truncated = truncated.substring(0, lastSpace);
+        }
+        
+        return truncated + '...';
     }
     </script>
 </body>
