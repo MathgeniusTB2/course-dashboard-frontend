@@ -582,6 +582,56 @@
             animation: spin 1s linear infinite;
             display: inline-block;
         }
+
+        .loading-progress {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .loading-spinner #loadingStatus {
+            color: var(--text);
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .loading-spinner .progress-container {
+            width: 100%;
+            height: 6px;
+            background: #eee;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .dark-theme .loading-spinner .progress-container {
+            background: #2a2d35;
+        }
+
+        .loading-spinner .progress-bar {
+            height: 100%;
+            width: 0;
+            background: var(--accent);
+            transition: width 0.3s ease-out;
+        }
+
+        .loading-errors {
+            margin: 10px 0;
+            color: var(--danger);
+            font-size: 14px;
+        }
+        
+        .loading-errors .error-item {
+            background: rgba(231, 76, 60, 0.1);
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin: 4px 0;
+        }
+        
+        .dark-theme .loading-errors .error-item {
+            background: rgba(255, 92, 92, 0.1);
+        }
         
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -724,9 +774,12 @@
         
         <div class="loading-spinner" id="loadingSpinner">
             <div class="spinner"></div>
-            <p class="loading-status" id="loadingStatus" style="margin-top: 15px; color: #64748b;">Loading your courses...</p>
-            <div class="progress-container" style="margin-top: 20px;">
-                <div class="progress-bar" id="loadingProgress"></div>
+            <div class="loading-progress">
+                <p id="loadingStatus">Loading your courses...</p>
+                <div id="loadingErrors" class="loading-errors"></div>
+                <div class="progress-container">
+                    <div class="progress-bar" id="loadingProgress"></div>
+                </div>
             </div>
         </div>
         
@@ -793,7 +846,13 @@ Autumn session
         const spinner = document.getElementById('loadingSpinner');
         const status = document.getElementById('loadingStatus');
         const progress = document.getElementById('loadingProgress');
-        spinner.style.display = '';
+        const errorsDiv = document.getElementById('loadingErrors');
+        
+        spinner.style.display = 'block';
+        progress.style.width = '0%';
+        errorsDiv.innerHTML = '';
+        let processed = 0;
+        let errors = [];
         
         try {
             const resp = await fetch(`${BACKEND_URL}/api/courses`, {
@@ -803,32 +862,70 @@ Autumn session
             });
 
             const raw = await resp.json();
-            let processed = 0;
-            courses = raw.map(c => {
+            
+            // Process successful and failed courses
+            const successfulCourses = [];
+            
+            raw.forEach(c => {
                 processed++;
-                // Update loading status and progress bar
-                status.textContent = `Loading ${c.code || 'course'} (${processed}/${codes.length})`;
-                progress.style.width = `${(processed / codes.length) * 100}%`;
+                const percentage = Math.round((processed / codes.length) * 100);
                 
-                return {
-                    code: c.code,
-                    name: c.title,
-                    prerequisites: c.requisites || "None specified",
-                    assessments: c.assessment.map(a => ({
-                        name: a.title,
-                        type: a.details['Type'] || 'Unknown',
-                        groupwork: a.details['Groupwork'] || 'Individual',
-                        weight: Number((a.details['Weight']||'0').replace('%','')) || 0,
-                        length: a.details['Length'] || 'Not specified',
-                        intent: a.details['Intent'] || ''
-                    }))
-                };
+                if (c.error) {
+                    errors.push(`${c.code}: ${c.error}`);
+                    status.textContent = `Processing ${c.code} (${processed}/${codes.length}) - Error`;
+                } else {
+                    status.textContent = `Processing ${c.code} (${processed}/${codes.length})`;
+                    successfulCourses.push({
+                        code: c.code,
+                        name: c.title,
+                        prerequisites: c.requisites || "None specified",
+                        assessments: c.assessment.map(a => ({
+                            name: a.title,
+                            type: a.details['Type'] || 'Unknown',
+                            groupwork: a.details['Groupwork'] || 'Individual',
+                            weight: Number((a.details['Weight']||'0').replace('%','')) || 0,
+                            length: a.details['Length'] || 'Not specified',
+                            intent: a.details['Intent'] || ''
+                        }))
+                    });
+                }
+                
+                progress.style.width = `${percentage}%`;
+                
+                // Show errors as they occur
+                if (errors.length > 0) {
+                    errorsDiv.innerHTML = errors.map(err => 
+                        `<div class="error-item">${err}</div>`
+                    ).join('');
+                }
             });
-            initializeDashboard();
+            
+            // Only update courses with successful ones
+            courses = successfulCourses;
+            
+            if (successfulCourses.length > 0) {
+                initializeDashboard();
+            }
+            
+            // Show final status
+            status.textContent = `Loaded ${successfulCourses.length} courses` + 
+                (errors.length ? ` (${errors.length} failed)` : '');
+            
         } catch (e) {
-            alert('Failed to fetch courses.');
+            status.textContent = 'Failed to fetch courses';
+            errorsDiv.innerHTML = `<div class="error-item">Network error: ${e.message}</div>`;
         } finally {
-            spinner.style.display = 'none';
+            // Keep errors visible for a moment
+            setTimeout(() => {
+                if (errors.length === 0) {
+                    spinner.style.display = 'none';
+                } else {
+                    // For errors, keep visible longer and fade out
+                    setTimeout(() => {
+                        spinner.style.display = 'none';
+                    }, 3000);
+                }
+            }, 500);
         }
     }
 
