@@ -1077,7 +1077,7 @@ Autumn session
     <script>
     // Global state
     let courses = [];
-    const BACKEND_URL = "https://course-dashboard-backend.onrender.com";  // Changed from remote URL to localhost
+    const BACKEND_URL = "http://localhost:5000";  // Changed from remote URL to localhost
     const WARMUP_TIMEOUT = 60000; // 60 seconds timeout for cold starts
     let isWarmedUp = false;
 
@@ -1661,9 +1661,9 @@ Autumn session
                             <p>${course.credit_points}</p>
                         </div>
                         <div class="card-body">
-                            ${course.overview ? `
+                            ${course.overview?.description ? `
                                 <div class="overview-preview">
-                                    ${truncateText(course.overview, 150)}
+                                    ${truncateText(course.overview.description, 150)}
                                 </div>
                             ` : ''}
                             <div class="prerequisites">
@@ -2026,14 +2026,29 @@ Autumn session
 
     // Helper function to truncate text with ellipsis
     function truncateText(text, maxLength) {
-        if (!text || text.length <= maxLength) return text;
+        if (!text || typeof text !== 'string' || text.length <= maxLength) return text;
         
         // Try to truncate at the last complete word
-        let truncated = text.substr(0, maxLength);
+        let truncated = text.substring(0, maxLength);
         let lastSpace = truncated.lastIndexOf(' ');
         
         if (lastSpace > maxLength * 0.8) { // Only truncate at word if we don't lose too much text
-            truncated = truncated.substr(0, lastSpace);
+            truncated = truncated.substring(0, lastSpace);
+        }
+        
+        return truncated + '...';
+    }
+
+    // Helper function to truncate text with ellipsis
+    function truncateText(text, maxLength) {
+        if (!text || typeof text !== 'string' || text.length <= maxLength) return text;
+        
+        // Try to truncate at the last complete word
+        let truncated = text.substring(0, maxLength);
+        let lastSpace = truncated.lastIndexOf(' ');
+        
+        if (lastSpace > maxLength * 0.8) { // Only truncate at word if we don't lose too much text
+            truncated = truncated.substring(0, lastSpace);
         }
         
         return truncated + '...';
