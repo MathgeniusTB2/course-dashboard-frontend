@@ -1150,6 +1150,7 @@ Autumn session
                 </div>
             `;
 
+            // Overview section
             if (course.overview) {
                 html += `
                     <div class="detail-section overview-section">
@@ -1161,6 +1162,7 @@ Autumn session
                 `;
             }
 
+            // Prerequisites section
             if (course.requisites) {
                 html += `
                     <div class="detail-section">
@@ -1170,19 +1172,21 @@ Autumn session
                 `;
             }
 
+            // Learning Outcomes section
             if (course.learning_outcomes?.length > 0) {
                 html += `
                     <div class="detail-section">
                         <h3>Learning Outcomes</h3>
                         <ul class="detail-list">
                             ${course.learning_outcomes.map(lo => 
-                                `<li><strong>${lo.no}.</strong> ${lo.text}</li>`
+                                `<li>${lo.no}. ${lo.text}</li>`
                             ).join('')}
                         </ul>
                     </div>
                 `;
             }
 
+            // Assessment Details section
             if (course.assessments?.length > 0) {
                 html += `
                     <div class="detail-section">
@@ -1208,34 +1212,33 @@ Autumn session
             content.innerHTML = html;
             modal.style.display = 'block';
 
-            // Set up event listeners
-            setupModalListeners(modal);
+            // Set up modal event listeners
+            const closeModalHandler = (e) => {
+                if (e.target === modal) {
+                    closeModal();
+                }
+            };
+
+            const escapeHandler = (e) => {
+                if (e.key === 'Escape') {
+                    closeModal();
+                }
+            };
+
+            modal.addEventListener('click', closeModalHandler);
+            document.addEventListener('keydown', escapeHandler);
+
+            // Clean up listeners when modal closes
+            const cleanup = () => {
+                modal.removeEventListener('click', closeModalHandler);
+                document.removeEventListener('keydown', escapeHandler);
+                modal.removeEventListener('hide', cleanup);
+            };
+            modal.addEventListener('hide', cleanup);
+
         } catch (error) {
             console.error('Error showing course details:', error);
         }
-    }
-
-    function setupModalListeners(modal) {
-        const closeModalHandler = (e) => {
-            if (e.target === modal) {
-                closeModal();
-            }
-        };
-
-        const escapeHandler = (e) => {
-            if (e.key === 'Escape') {
-                closeModal();
-            }
-        };
-
-        modal.addEventListener('click', closeModalHandler);
-        document.addEventListener('keydown', escapeHandler);
-
-        // Cleanup listeners when modal closes
-        modal.addEventListener('hide', () => {
-            modal.removeEventListener('click', closeModalHandler);
-            document.removeEventListener('keydown', escapeHandler);
-        });
     }
 
     function closeModal() {
