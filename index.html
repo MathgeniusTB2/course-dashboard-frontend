@@ -961,45 +961,170 @@ Autumn session
     </div>
 
     <script>
+    // Global state
     let courses = [];
-    let filteredCourses = [];
     const BACKEND_URL = "https://course-dashboard-backend.onrender.com";
     const WARMUP_TIMEOUT = 60000; // 60 seconds timeout for cold starts
     let isWarmedUp = false;
 
-    // Add warmup function
-    async function warmupBackend() {
-        const spinner = document.getElementById('loadingSpinner');
-        const status = document.getElementById('loadingStatus');
-        spinner.style.display = 'block';
-        status.textContent = 'Warming up server... (this may take up to 60 seconds)';
-        
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), WARMUP_TIMEOUT);
-            
-            const response = await fetch(`${BACKEND_URL}/api/warmup`, {
-                signal: controller.signal
-            });
-            
-            clearTimeout(timeoutId);
-            
-            if (response.ok) {
-                isWarmedUp = true;
-                spinner.style.display = 'none';
-                return true;
-            }
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                status.textContent = 'Server is taking longer than usual to respond. Please try again.';
-            } else {
-                status.textContent = 'Error connecting to server. Please try again.';
-            }
-            console.error('Warmup error:', error);
-            spinner.style.display = 'none';
-            return false;
+    // Theme handling - single implementation
+    const themeToggle = document.getElementById('themeToggle');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    function setTheme(isDark) {
+        document.body.classList.toggle('dark-theme', isDark);
+        if (themeToggle) {
+            themeToggle.innerHTML = isDark ? 
+                '<i class="fas fa-sun"></i> Light Mode' : 
+                '<i class="fas fa-moon"></i> Dark Mode';
+        }
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    }
+
+    // Initialize theme
+    function initTheme() {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            setTheme(savedTheme === 'dark');
+        } else {
+            setTheme(prefersDark.matches);
         }
     }
+
+    // Theme toggle event listener
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            setTheme(!document.body.classList.contains('dark-theme'));
+        });
+    }
+
+    // Listen for system theme changes
+    prefersDark.addListener((e) => {
+        if (!localStorage.getItem('theme')) {
+            setTheme(e.matches);
+        }
+    });
+
+    // Initialize theme on page load
+    document.addEventListener('DOMContentLoaded', initTheme);
+
+    // Modal functionality - single implementation
+    function showCourseDetail(course) {
+        const modal = document.getElementById('courseDetailModal');
+        const content = document.getElementById('modalContent');
+        
+        if (!modal || !content) {
+            console.error('Modal elements not found');
+            return;
+        }
+
+        try {
+            let html = `
+                <div class="modal-header">
+                    <h2>${course.code} - ${course.title}</h2>
+                    <p>${course.credit_points}</p>
+                </div>
+            `;
+
+            if (course.overview) {
+                html += `
+                    <div class="detail-section overview-section">
+                        <h3>Overview</h3>
+                        <div class="overview-content">
+                            ${formatOverviewText(course.overview)}
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (course.requisites) {
+                html += `
+                    <div class="detail-section">
+                        <h3>Prerequisites</h3>
+                        <p>${course.requisites}</p>
+                    </div>
+                `;
+            }
+
+            if (course.learning_outcomes?.length > 0) {
+                html += `
+                    <div class="detail-section">
+                        <h3>Learning Outcomes</h3>
+                        <ul class="detail-list">
+                            ${course.learning_outcomes.map(lo => 
+                                `<li><strong>${lo.no}.</strong> ${lo.text}</li>`
+                            ).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            if (course.assessments?.length > 0) {
+                html += `
+                    <div class="detail-section">
+                        <h3>Assessment Tasks</h3>
+                        <div class="detail-grid">
+                            ${course.assessments.map(task => `
+                                <div class="assessment-detail">
+                                    <h4>${task.title}</h4>
+                                    <ul class="detail-list">
+                                        <li><strong>Type:</strong> ${task.type}</li>
+                                        <li><strong>Weight:</strong> ${task.weight}%</li>
+                                        <li><strong>Work Type:</strong> ${task.groupwork}</li>
+                                        ${task.length ? `<li><strong>Length:</strong> ${task.length}</li>` : ''}
+                                        ${task.intent ? `<li><strong>Description:</strong> ${task.intent}</li>` : ''}
+                                    </ul>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            content.innerHTML = html;
+            modal.style.display = 'block';
+
+            // Set up event listeners
+            setupModalListeners(modal);
+        } catch (error) {
+            console.error('Error showing course details:', error);
+        }
+    }
+
+    function setupModalListeners(modal) {
+        const closeModalHandler = (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        };
+
+        const escapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        };
+
+        modal.addEventListener('click', closeModalHandler);
+        document.addEventListener('keydown', escapeHandler);
+
+        // Cleanup listeners when modal closes
+        modal.addEventListener('hide', () => {
+            modal.removeEventListener('click', closeModalHandler);
+            document.removeEventListener('keydown', escapeHandler);
+        });
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('courseDetailModal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.dispatchEvent(new Event('hide'));
+        }
+    }
+
+    // Filter state
+    const assessmentTypeFilterState = new Map();
+    const workTypeFilterState = new Map();
 
     async function fetchAndInit(codes) {
         const spinner = document.getElementById('loadingSpinner');
@@ -1215,10 +1340,6 @@ Autumn session
         renderCourses();
     }
 
-    // Filter state: Map<filterName, 0|1|-1> (0=neutral, 1=include, -1=exclude)
-    let assessmentTypeFilterState = new Map();
-    let workTypeFilterState = new Map();
-
     function renderFilters() {
         const assessmentTypeFilters = document.getElementById('assessmentTypeFilters');
         const workTypeFilters = document.getElementById('workTypeFilters');
@@ -1240,23 +1361,19 @@ Autumn session
             }
         });
 
-        function createPill(label, filterMap, container) {
-            if (!label) return;
-            
-            let state = filterMap.get(label) || 0;
-            const pill = document.createElement('span');
-            pill.className = 'filter-pill';
-            if (state === 1) pill.classList.add('included');
-            if (state === -1) pill.classList.add('excluded');
-            pill.tabIndex = 0;
-            pill.textContent = label;
-            if (state === -1) {
-                const x = document.createElement('span');
-                x.className = 'pill-x';
-                x.textContent = '✕';
-                pill.appendChild(x);
-            }
-            pill.addEventListener('click', () => {
+        assessmentTypeFilters.innerHTML = '';
+        Array.from(allAssessmentTypes).sort().forEach(t => 
+            createFilterPill(t, assessmentTypeFilterState, assessmentTypeFilters)
+        );
+        
+        workTypeFilters.innerHTML = '';
+        Array.from(allWorkTypes).sort().forEach(w => 
+            createFilterPill(w, workTypeFilterState, workTypeFilters)
+        );
+    }
+
+    function renderCourses() {
+        const container = document.getElementById('cardContainer');
         const searchVal = document.getElementById('searchInput')?.value.toLowerCase() || '';
         
         if (!courses || courses.length === 0) {
@@ -1605,150 +1722,139 @@ Autumn session
     });
 
     document.getElementById('searchInput').addEventListener('input', () => renderCourses());
-    </script>
-    <script>
-    // Theme handling
-    const themeBtn = document.getElementById('themeToggle');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
-    
-    function setTheme(isDark) {
-        document.body.classList.toggle('dark-theme', isDark);
-        if (themeBtn) {
-            themeBtn.innerHTML = isDark ? '<i class="fas fa-sun"></i> Light Mode' : '<i class="fas fa-moon"></i> Dark Mode';
+
+    // Add warmup function
+    async function warmupBackend() {
+        const status = document.getElementById('loadingStatus');
+        if (status) {
+            status.textContent = 'Warming up the server...';
         }
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+
+        try {
+            const startTime = Date.now();
+            while (Date.now() - startTime < WARMUP_TIMEOUT) {
+                const response = await fetch(`${BACKEND_URL}/api/warmup`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.status === 'ready') {
+                        isWarmedUp = true;
+                        return true;
+                    }
+                }
+                // Wait a bit before retrying
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            throw new Error('Server warmup timed out');
+        } catch (error) {
+            console.error('Warmup error:', error);
+            if (status) {
+                status.textContent = 'Error warming up server. Please try again later.';
+            }
+            return false;
+        }
     }
 
-    // Initialize theme
-    function initTheme() {
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme) {
-            setTheme(savedTheme === 'dark');
-        } else {
-            setTheme(prefersDark.matches);
+    // Enhance filter pills with better state management
+    function createFilterPill(label, filterMap, container) {
+        if (!label) return;
+        
+        const state = filterMap.get(label) || 0;
+        const pill = document.createElement('span');
+        pill.className = 'filter-pill';
+        pill.setAttribute('role', 'button');
+        pill.setAttribute('aria-pressed', state !== 0 ? 'true' : 'false');
+        pill.setAttribute('title', 'Click to toggle filter');
+        pill.tabIndex = 0;
+        
+        // Update visual state
+        if (state === 1) {
+            pill.classList.add('included');
+            pill.setAttribute('data-state', 'included');
+        } else if (state === -1) {
+            pill.classList.add('excluded');
+            pill.setAttribute('data-state', 'excluded');
         }
-    }
-
-    // Theme button click handler
-    if (themeBtn) {
-        themeBtn.addEventListener('click', () => {
-            setTheme(!document.body.classList.contains('dark-theme'));
+        
+        // Add icon based on state
+        const icon = document.createElement('i');
+        icon.className = 'fas';
+        if (state === 1) {
+            icon.className += ' fa-check';
+        } else if (state === -1) {
+            icon.className += ' fa-times';
+        }
+        
+        const text = document.createElement('span');
+        text.textContent = label;
+        
+        pill.appendChild(icon);
+        pill.appendChild(text);
+        
+        const updateState = (newState) => {
+            if (newState === 0) {
+                filterMap.delete(label);
+                pill.className = 'filter-pill';
+                pill.setAttribute('data-state', '');
+            } else {
+                filterMap.set(label, newState);
+                pill.className = `filter-pill ${newState === 1 ? 'included' : 'excluded'}`;
+                pill.setAttribute('data-state', newState === 1 ? 'included' : 'excluded');
+            }
+            icon.className = `fas ${newState === 1 ? 'fa-check' : newState === -1 ? 'fa-times' : ''}`;
+            pill.setAttribute('aria-pressed', newState !== 0 ? 'true' : 'false');
+            renderCourses();
+        };
+        
+        // Click handler
+        pill.addEventListener('click', () => {
+            const currentState = filterMap.get(label) || 0;
+            const newState = currentState === 0 ? 1 : (currentState === 1 ? -1 : 0);
+            updateState(newState);
         });
+        
+        // Keyboard handler
+        pill.addEventListener('keydown', (e) => {
+            if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                pill.click();
+            }
+        });
+        
+        container.appendChild(pill);
     }
 
-    // Listen for system theme changes
-    prefersDark.addListener((e) => {
-        if (!localStorage.getItem('theme')) {
-            setTheme(e.matches);
-        }
-    });
-
-    // Initialize theme on page load
-    initTheme();
-
-    // Filter state maps
-    const assessmentTypeFilterState = new Map();
-    const workTypeFilterState = new Map();
-    
-    // Initialize filter handlers
-    document.getElementById('clearFilters')?.addEventListener('click', () => {
-        assessmentTypeFilterState.clear();
-        workTypeFilterState.clear();
-        if (document.getElementById('searchInput')) {
-            document.getElementById('searchInput').value = '';
-        }
-        renderFilters();
-        renderCourses();
-    });
-
-    document.getElementById('searchInput')?.addEventListener('input', () => {
-        renderCourses();
-    });
-
-    // Import dialog handlers
-    document.getElementById('fetchBtn')?.addEventListener('click', () => {
-        const dialog = document.getElementById('importDialog');
-        const overlay = document.getElementById('importOverlay');
-        if (dialog && overlay) {
-            dialog.style.display = 'block';
-            overlay.style.display = 'block';
-        }
-    });
-
-    // Close import dialog
-    function closeImport() {
-        const dialog = document.getElementById('importDialog');
-        const overlay = document.getElementById('importOverlay');
-        const textarea = document.getElementById('importText');
+    // Update renderFilters to use enhanced createFilterPill
+    function renderFilters() {
+        const assessmentTypeFilters = document.getElementById('assessmentTypeFilters');
+        const workTypeFilters = document.getElementById('workTypeFilters');
         
-        if (dialog) dialog.style.display = 'none';
-        if (overlay) overlay.style.display = 'none';
-        if (textarea) textarea.value = '';
-    }
-
-    // Process import
-    async function processImport() {
-        const input = document.getElementById('importText')?.value;
-        if (!input) return;
-
-        // Extract all 5-digit numbers from any text
-        const codes = [...new Set(input.match(/\b\d{5}\b/g))];
-        
-        if (codes.length === 0) {
-            alert('No valid course codes found. Course codes are 5-digit numbers.');
+        if (!assessmentTypeFilters || !workTypeFilters || !courses) {
+            console.error('Required elements not found or courses not loaded');
             return;
         }
 
-        closeImport();
+        const allAssessmentTypes = new Set();
+        const allWorkTypes = new Set();
+
+        courses.forEach(course => {
+            if (course.assessments) {
+                course.assessments.forEach(a => {
+                    if (a.type) allAssessmentTypes.add(a.type);
+                    if (a.groupwork) allWorkTypes.add(a.groupwork);
+                });
+            }
+        });
+
+        assessmentTypeFilters.innerHTML = '';
+        Array.from(allAssessmentTypes).sort().forEach(t => 
+            createFilterPill(t, assessmentTypeFilterState, assessmentTypeFilters)
+        );
         
-        const progressContainer = document.querySelector('.progress-container');
-        const progressBar = document.querySelector('.progress-bar');
-        if (progressContainer) progressContainer.style.display = 'block';
-        
-        let progress = 0;
-        const updateProgress = () => {
-            progress += (100 - progress) * 0.1;
-            if (progressBar) progressBar.style.width = `${progress}%`;
-        };
-        
-        const progressInterval = setInterval(updateProgress, 100);
-        
-        try {
-            await fetchAndInit(codes);
-        } finally {
-            clearInterval(progressInterval);
-            if (progressBar) progressBar.style.width = '100%';
-            setTimeout(() => {
-                if (progressContainer) {
-                    progressContainer.style.display = 'none';
-                    if (progressBar) progressBar.style.width = '0%';
-                }
-            }, 500);
-        }
+        workTypeFilters.innerHTML = '';
+        Array.from(allWorkTypes).sort().forEach(w => 
+            createFilterPill(w, workTypeFilterState, workTypeFilters)
+        );
     }
-
-    // Ensure modal can be closed
-    function closeModal() {
-        const modal = document.getElementById('courseDetailModal');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-    }
-
-    // Close modal when clicking outside
-    window.addEventListener('click', (event) => {
-        const modal = document.getElementById('courseDetailModal');
-        if (event.target === modal) {
-            closeModal();
-        }
-    });
-
-    // Close modal with escape key
-    window.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-            closeModal();
-        }
-    });
     </script>
 </body>
 </html>
