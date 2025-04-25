@@ -599,6 +599,48 @@
             text-shadow: 0 0 6px #39ff14, 0 0 2px #fff;
             box-shadow: 0 0 8px 2px #39ff14;
         }
+        .length-pill {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 1px 8px;
+            border-radius: 10px;
+            background: #e9ecef;
+            color: #6c757d;
+            font-size: 11px;
+            font-weight: 500;
+            border: none;
+            vertical-align: baseline;
+            opacity: 0.85;
+            position: relative;
+            top: -1px;
+        }
+        .length-pill.subtle {
+            background: #e9ecef;
+            color: #888;
+            border: none;
+            box-shadow: none;
+            font-size: 11px;
+            font-weight: 400;
+            opacity: 0.7;
+        }
+        .dark-theme .length-pill,
+        .dark-theme .length-pill.subtle {
+            background: #23262e;
+            color: #b0b8c1;
+            border: none;
+            box-shadow: none;
+            opacity: 0.7;
+        }
+        .assessment-intent {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #666;
+            margin: 3px 0;
+            font-style: italic;
+            flex-wrap: wrap;
+        }
     </style>
 </head>
 <body>
@@ -886,15 +928,15 @@
                 // Neon tag for assessment type
                 const typeTagClass = getTypeTagClass(a.type);
 
-                // Add length next to the intent/description, styled as a pill
+                // Add length next to the intent/description, styled as a subtle pill below or beside
                 item.innerHTML = `
                     <div class="assessment-header">
                         <span class="assessment-title">${a.name}</span>
                         <span class="assessment-weight">${a.weight}%</span>
                     </div>
                     <div class="assessment-intent">
-                        ${a.intent}
-                        <span class="length-pill">${a.length}</span>
+                        <span>${a.intent}</span>
+                        ${a.length && a.length !== 'Not specified' ? `<span class="length-pill subtle">${a.length}</span>` : ''}
                     </div>
                     <div class="assessment-details">
                         <span class="tag ${typeTagClass}">${a.type}</span>
