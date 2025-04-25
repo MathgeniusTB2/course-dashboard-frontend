@@ -932,6 +932,66 @@
             opacity: 0.9;
         }
 
+        .overview-section-category {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .overview-section-category:last-child {
+            margin-bottom: 0;
+        }
+
+        .overview-section-category h4 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent);
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+
+        .overview-section-category h4 i {
+            opacity: 0.9;
+        }
+
+        .overview-content-category {
+            color: var(--text);
+            line-height: 1.7;
+        }
+
+        .topics-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 12px;
+        }
+
+        .topics-list li {
+            position: relative;
+            padding-left: 20px;
+            line-height: 1.5;
+        }
+
+        .topics-list li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+        }
+
+        .dark-theme .overview-section-category {
+            background: rgba(255, 255, 255, 0.03);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .dark-theme .overview-content-category {
+            color: #e3e8f0;
+        }
     </style>
 </head>
 <body>
@@ -1017,7 +1077,7 @@ Autumn session
     <script>
     // Global state
     let courses = [];
-    const BACKEND_URL = "https://course-dashboard-backend.onrender.com";
+    const BACKEND_URL = "https://course-dashboard-backend.onrender.com";  // Changed from remote URL to localhost
     const WARMUP_TIMEOUT = 60000; // 60 seconds timeout for cold starts
     let isWarmedUp = false;
 
@@ -1426,27 +1486,56 @@ Autumn session
         );
     }
 
-    // Helper function to format overview text with better paragraph handling
+    // Helper function to format overview text with categories
     function formatOverviewText(text) {
         if (!text) return '';
         
-        // First split into paragraphs
-        const paragraphs = text
-            .split(/[.!?](?:\s+|\n)/)  // Split on sentence endings followed by whitespace
-            .filter(p => p.trim())  // Remove empty paragraphs
-            .map(p => p.trim() + '.')  // Add back the period and clean up whitespace
-            .reduce((acc, sentence, i, arr) => {
-                // Group sentences into paragraphs (3-4 sentences per paragraph)
-                const paragraphIndex = Math.floor(i / 3);
-                if (!acc[paragraphIndex]) acc[paragraphIndex] = [];
-                acc[paragraphIndex].push(sentence);
-                return acc;
-            }, [])
-            .map(sentences => sentences.join(' ')); // Join sentences in each paragraph
+        // Split into major sections based on content
+        const parts = text.split(/(?=[A-Z][a-z]+ part:)|(?=Topics include:)/g)
+            .map(p => p.trim())
+            .filter(p => p);
+            
+        let html = '';
         
-        return paragraphs
-            .map(p => `<p class="overview-paragraph">${p}</p>`)
-            .join('\n');
+        // Format each section appropriately
+        parts.forEach(part => {
+            if (part.startsWith('Topics include:')) {
+                html += `
+                    <div class="overview-section-category">
+                        <h4><i class="fas fa-list"></i> Key Topics</h4>
+                        <div class="overview-content-category">
+                            <ul class="topics-list">
+                                ${part.replace('Topics include:', '')
+                                    .split(';')
+                                    .map(topic => `<li>${topic.trim()}</li>`)
+                                    .join('')}
+                            </ul>
+                        </div>
+                    </div>`;
+            } else {
+                // For the main description
+                const paragraphs = part.split(/[.!?](?:\s+|\n)/)
+                    .filter(p => p.trim())
+                    .map(p => p.trim() + '.')
+                    .reduce((acc, sentence, i, arr) => {
+                        const paragraphIndex = Math.floor(i / 3);
+                        if (!acc[paragraphIndex]) acc[paragraphIndex] = [];
+                        acc[paragraphIndex].push(sentence);
+                        return acc;
+                    }, [])
+                    .map(sentences => sentences.join(' '));
+
+                html += `
+                    <div class="overview-section-category">
+                        <h4><i class="fas fa-book"></i> Course Description</h4>
+                        <div class="overview-content-category">
+                            ${paragraphs.map(p => `<p class="overview-paragraph">${p}</p>`).join('\n')}
+                        </div>
+                    </div>`;
+            }
+        });
+        
+        return html;
     }
 
     function renderCourses() {
