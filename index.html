@@ -905,22 +905,23 @@ Autumn session
                             .filter(c => !c.error)
                             .map(c => ({
                                 code: c.code,
-                                name: c.title || '',  // Added fallback
-                                prerequisites: c.requisites || "None specified",
+                                name: c.title,
+                                prerequisites: c.requisites,
                                 assessments: (c.assessment || []).map(a => ({
-                                    name: a.title || '',
-                                    type: (a.details && a.details['Type']) || 'Unknown',
-                                    groupwork: determineGroupwork(a.details && a.details['Groupwork']),
-                                    weight: Number(((a.details && a.details['Weight']) || '0').replace('%','')) || 0,
-                                    length: (a.details && a.details['Length']) || 'Not specified',
-                                    intent: (a.details && a.details['Intent']) || ''
+                                    name: a.title,
+                                    type: a.details.Type,
+                                    groupwork: determineGroupwork(a.details.Groupwork),
+                                    weight: parseInt((a.details.Weight || '0').replace(/%/g, ''), 10) || 0,
+                                    length: a.details.Length,
+                                    intent: a.details.Intent
                                 }))
                             }));
 
-                        // Update courses with successful ones
+                        // Only update courses and initialize dashboard if we have data
                         if (successfulCourses.length > 0) {
                             courses = successfulCourses;
-                            initializeDashboard();  // Make sure we call this to render the courses
+                            console.log('Loaded courses:', courses); // Debug log
+                            initializeDashboard();
                         }
                     }
                 }
