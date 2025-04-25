@@ -907,7 +907,7 @@
             padding: 20px;
             background: var(--prereq-bg);
             border-radius: 12px;
-            border-left: 4px solid var(--accent);
+            border-left: 4px solid var (--accent);
             transition: all var(--transition-speed);
         }
 
@@ -1673,21 +1673,28 @@ Autumn session
                     `;
                 }).join('');
 
-                // Store sanitized course data for modal
-                const safeData = {
+                // Store minimal course data needed for modal
+                const courseData = {
                     code: course.code,
                     title: course.title,
                     credit_points: course.credit_points,
                     requisites: course.requisites,
                     overview: course.overview,
                     learning_outcomes: course.learning_outcomes,
-                    assessments: course.assessments
+                    assessments: course.assessments.map(a => ({
+                        title: a.title,
+                        type: a.type,
+                        weight: a.weight,
+                        groupwork: a.groupwork,
+                        length: a.length,
+                        intent: a.intent
+                    }))
                 };
 
                 return `
                     <div class="course-card" tabindex="0" role="button" 
                         aria-label="View details for ${course.code} - ${course.title}"
-                        data-course='${JSON.stringify(safeData)}'>
+                        data-course-code="${course.code}">
                         <div class="card-header">
                             <h2>${course.code} - ${course.title}</h2>
                             <p>${course.credit_points}</p>
@@ -1710,7 +1717,16 @@ Autumn session
             // Add click handlers to course cards
             const cards = document.querySelectorAll('.course-card');
             cards.forEach(card => {
-                // Define handlers first
+                // Handle click events
+                const handleClick = () => {
+                    const code = card.getAttribute('data-course-code');
+                    const course = courses.find(c => c.code === code);
+                    if (course) {
+                        showCourseDetail(course);
+                    }
+                };
+
+                // Handle keyboard events 
                 const handleKeyPress = (e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
@@ -1718,20 +1734,11 @@ Autumn session
                     }
                 };
 
-                const handleClick = () => {
-                    try {
-                        const courseData = JSON.parse(card.getAttribute('data-course'));
-                        showCourseDetail(courseData);
-                    } catch (err) {
-                        console.error('Error parsing course data:', err);
-                    }
-                };
-
-                // Remove any existing event listeners first
+                // Remove any existing listeners
                 card.removeEventListener('click', handleClick);
                 card.removeEventListener('keydown', handleKeyPress);
 
-                // Add new event listeners
+                // Add new listeners
                 card.addEventListener('click', handleClick);
                 card.addEventListener('keydown', handleKeyPress);
             });
