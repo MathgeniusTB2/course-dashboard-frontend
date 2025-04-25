@@ -1301,6 +1301,9 @@ Autumn session
                     return '';
                 }
 
+                // Store stringified course data in the card
+                const courseJson = JSON.stringify(course).replace(/"/g, '&quot;');
+                
                 // Calculate total weight and format assessments
                 let totalWeight = 0;
                 const assessmentHtml = course.assessments.map(task => {
@@ -1312,7 +1315,7 @@ Autumn session
                         'tag-group' : 'tag-individual';
                     
                     return `
-                        <div class="assessment-item" onclick="showCourseDetail(${JSON.stringify(course)})">
+                        <div class="assessment-item">
                             <div class="assessment-header">
                                 <span class="assessment-title">${task.title || 'Untitled Assessment'}</span>
                                 <span class="assessment-weight">${task.weight || 0}%</span>
@@ -1328,8 +1331,8 @@ Autumn session
                 }).join('');
 
                 return `
-                    <div class="course-card" data-code="${course.code}">
-                        <div class="card-header" onclick="showCourseDetail(${JSON.stringify(course)})">
+                    <div class="course-card" data-code="${course.code}" data-course='${courseJson}'>
+                        <div class="card-header">
                             <h2>${course.code} - ${course.title}</h2>
                             <p>${course.credit_points} - ${totalWeight}% Total Weight</p>
                         </div>
@@ -1342,6 +1345,30 @@ Autumn session
                     </div>
                 `;
             }).join('');
+
+            // Add click handlers after rendering
+            document.querySelectorAll('.course-card').forEach(card => {
+                card.style.cursor = 'pointer';
+                card.addEventListener('click', function(e) {
+                    const courseData = this.dataset.course;
+                    if (courseData) {
+                        showCourseDetail(JSON.parse(courseData));
+                    }
+                });
+                
+                // Make assessment items clickable too
+                card.querySelectorAll('.assessment-item').forEach(item => {
+                    item.style.cursor = 'pointer';
+                    item.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const courseData = this.closest('.course-card').dataset.course;
+                        if (courseData) {
+                            showCourseDetail(JSON.parse(courseData));
+                        }
+                    });
+                });
+            });
+
         } catch (error) {
             console.error('Error rendering courses:', error);
             container.innerHTML = `
@@ -1355,81 +1382,106 @@ Autumn session
     }
 
     function showCourseDetail(course) {
-        const modal = document.getElementById('courseDetailModal');
-        if (!modal) return;
-        
-        const content = document.getElementById('modalContent');
-        if (!content) return;
-        
-        let html = `
-            <div class="modal-header">
-                <h2>${course.code} - ${course.title}</h2>
-                <p>${course.credit_points}</p>
-            </div>
-        `;
+        try {
+            const modal = document.getElementById('courseDetailModal');
+            const content = document.getElementById('modalContent');
+            
+            if (!modal || !content) {
+                console.error('Modal elements not found');
+                return;
+            }
 
-        // Overview section
-        if (course.overview) {
-            html += `
-                <div class="detail-section">
-                    <h3>Overview</h3>
-                    <p>${course.overview}</p>
+            let html = `
+                <div class="modal-header">
+                    <h2>${course.code} - ${course.title}</h2>
+                    <p>${course.credit_points}</p>
                 </div>
             `;
-        }
 
-        // Prerequisites
-        if (course.requisites) {
-            html += `
-                <div class="detail-section">
-                    <h3>Prerequisites</h3>
-                    <p>${course.requisites}</p>
-                </div>
-            `;
-        }
-
-        // Learning Outcomes
-        if (course.learning_outcomes && course.learning_outcomes.length > 0) {
-            html += `
-                <div class="detail-section">
-                    <h3>Learning Outcomes</h3>
-                    <ul class="detail-list">
-                        ${course.learning_outcomes.map(lo => 
-                            `<li>${lo.no}. ${lo.text}</li>`
-                        ).join('')}
-                    </ul>
-                </div>
-            `;
-        }
-
-        // Assessment Details
-        if (course.assessment && course.assessment.length > 0) {
-            html += `
-                <div class="detail-section">
-                    <h3>Assessment Tasks</h3>
-                    <div class="detail-grid">
-                        ${course.assessment.map(task => `
-                            <div class="assessment-detail">
-                                <h4>${task.title}</h4>
-                                <ul class="detail-list">
-                                    ${Object.entries(task.details || {}).map(([key, value]) => 
-                                        `<li><strong>${key}:</strong> ${value}</li>`
-                                    ).join('')}
-                                </ul>
-                            </div>
-                        `).join('')}
+            // Overview section
+            if (course.overview) {
+                html += `
+                    <div class="detail-section">
+                        <h3>Overview</h3>
+                        <p>${course.overview}</p>
                     </div>
-                </div>
-            `;
-        }
+                `;
+            }
 
-        content.innerHTML = html;
-        modal.style.display = 'block';
+            // Prerequisites
+            if (course.requisites) {
+                html += `
+                    <div class="detail-section">
+                        <h3>Prerequisites</h3>
+                        <p>${course.requisites}</p>
+                    </div>
+                `;
+            }
+
+            // Learning Outcomes
+            if (course.learning_outcomes && course.learning_outcomes.length > 0) {
+                html += `
+                    <div class="detail-section">
+                        <h3>Learning Outcomes</h3>
+                        <ul class="detail-list">
+                            ${course.learning_outcomes.map(lo => 
+                                `<li>${lo.no}. ${lo.text}</li>`
+                            ).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            // Assessment Details
+            if (course.assessments && course.assessments.length > 0) {
+                html += `
+                    <div class="detail-section">
+                        <h3>Assessment Tasks</h3>
+                        <div class="detail-grid">
+                            ${course.assessments.map(task => `
+                                <div class="assessment-detail">
+                                    <h4>${task.title}</h4>
+                                    <ul class="detail-list">
+                                        <li><strong>Type:</strong> ${task.type}</li>
+                                        <li><strong>Weight:</strong> ${task.weight}%</li>
+                                        <li><strong>Work Type:</strong> ${task.groupwork}</li>
+                                        ${task.length ? `<li><strong>Length:</strong> ${task.length}</li>` : ''}
+                                        ${task.intent ? `<li><strong>Description:</strong> ${task.intent}</li>` : ''}
+                                    </ul>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            content.innerHTML = html;
+            modal.style.display = 'block';
+            
+            // Enable clicking outside modal to close
+            modal.onclick = function(event) {
+                if (event.target === modal) {
+                    closeModal();
+                }
+            };
+            
+            // Enable escape key to close modal
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    closeModal();
+                }
+            });
+            
+        } catch (error) {
+            console.error('Error showing course details:', error);
+        }
     }
 
     function closeModal() {
         const modal = document.getElementById('courseDetailModal');
-        modal.style.display = 'none';
+        if (modal) {
+            modal.style.display = 'none';
+        }
     }
 
     // Close modal when clicking outside
