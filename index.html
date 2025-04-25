@@ -638,6 +638,71 @@
                 padding: 15px;
             }
         }
+
+        .import-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            max-width: 500px;
+            width: 90%;
+            z-index: 1000;
+        }
+        .import-dialog textarea {
+            width: 100%;
+            min-height: 150px;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-family: monospace;
+            resize: vertical;
+        }
+        .dark-theme .import-dialog textarea {
+            background: #181c22;
+            color: #e3e8f0;
+            border-color: #333a47;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(3px);
+            z-index: 999;
+        }
+        .progress-container {
+            width: 100%;
+            height: 4px;
+            background: #eee;
+            border-radius: 2px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .dark-theme .progress-container {
+            background: #2a2d35;
+        }
+        .progress-bar {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .import-help {
+            font-size: 13px;
+            color: #666;
+            margin: 10px 0;
+            line-height: 1.4;
+        }
+        .dark-theme .import-help {
+            color: #b0b8c1;
+        }
     </style>
 </head>
 <body>
@@ -680,6 +745,30 @@
             <!-- Cards will be populated here -->
         </div>
     </div>
+    <div id="importDialog" class="import-dialog" style="display:none;">
+        <h3>Import Courses</h3>
+        <div class="import-help">
+            <p>Paste your course list below. The system will automatically extract course codes (5-digit numbers) from any text format, including:</p>
+            <ul>
+                <li>Handbook pages</li>
+                <li>Course lists</li>
+                <li>Study planners</li>
+                <li>Plain text with course codes</li>
+            </ul>
+        </div>
+        <textarea id="importText" placeholder="Example:
+Autumn session
+33130 Mathematics 1     6cp
+41039 Programming 1     6cp
+..."></textarea>
+        <div class="progress-container" style="display:none;">
+            <div class="progress-bar"></div>
+        </div>
+        <button onclick="processImport()">Import</button>
+        <button onclick="closeImport()" style="background:#666">Cancel</button>
+    </div>
+    <div id="importOverlay" class="overlay" style="display:none;"></div>
+
     <script>
     let courses = [];
     // Filter state: Map<filterName, 0|1|-1> (0=neutral, 1=include, -1=exclude)
@@ -745,25 +834,53 @@
     }
 
     document.getElementById('fetchBtn').addEventListener('click', () => {
-    const input = prompt(`Paste your course list here:
-    Example:
-    Autumn session
-    33130 Mathematics 1     6cp
-    41039 Programming 1     6cp
-    ...`);
-
-        if (!input) return;
-
-        // Match all 5-digit course codes
-        const codes = [...new Set(input.match(/\b\d{5}\b/g))];
-
-        if (codes.length > 0) {
-            fetchAndInit(codes);
-        } else {
-            alert('No valid course codes found.');
-        }
+        document.getElementById('importDialog').style.display = '';
+        document.getElementById('importOverlay').style.display = '';
     });
 
+    function closeImport() {
+        document.getElementById('importDialog').style.display = 'none';
+        document.getElementById('importOverlay').style.display = 'none';
+        document.getElementById('importText').value = '';
+    }
+
+    async function processImport() {
+        const input = document.getElementById('importText').value;
+        if (!input) return;
+
+        // Extract all 5-digit numbers from any text
+        const codes = [...new Set(input.match(/\b\d{5}\b/g))];
+        
+        if (codes.length === 0) {
+            alert('No valid course codes found. Course codes are 5-digit numbers.');
+            return;
+        }
+
+        closeImport();
+        
+        const progressContainer = document.querySelector('.progress-container');
+        const progressBar = document.querySelector('.progress-bar');
+        progressContainer.style.display = '';
+        
+        let progress = 0;
+        const updateProgress = () => {
+            progress += (100 - progress) * 0.1;
+            progressBar.style.width = `${progress}%`;
+        };
+        
+        const progressInterval = setInterval(updateProgress, 100);
+        
+        try {
+            await fetchAndInit(codes);
+        } finally {
+            clearInterval(progressInterval);
+            progressBar.style.width = '100%';
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+                progressBar.style.width = '0%';
+            }, 500);
+        }
+    }
 
     function initializeDashboard() {
         renderFilters();
