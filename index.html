@@ -762,6 +762,93 @@
         .dark-theme .loading-status {
             color: #94a3b8;
         }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            margin: 40px auto;
+            padding: 25px;
+            border-radius: 12px;
+            max-width: 800px;
+            position: relative;
+            box-shadow: var(--card-shadow);
+            transition: background var(--transition-speed);
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            padding-bottom: 15px;
+        }
+
+        .dark-theme .modal-header {
+            border-bottom-color: rgba(255,255,255,0.1);
+        }
+
+        .modal-close {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text);
+            padding: 5px;
+            transition: color var(--transition-speed);
+        }
+
+        .modal-close:hover {
+            color: var(--danger);
+            transform: none;
+        }
+
+        .detail-section {
+            margin-bottom: 25px;
+        }
+
+        .detail-section h3 {
+            color: var(--accent);
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .detail-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .detail-list li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .loading-placeholder {
+            text-align: center;
+            color: var(--text);
+            opacity: 0.6;
+            font-style: italic;
+        }
+
     </style>
 </head>
 <body>
@@ -833,6 +920,16 @@ Autumn session
         <button onclick="closeImport()" style="background:#666">Cancel</button>
     </div>
     <div id="importOverlay" class="overlay" style="display:none;"></div>
+
+    <!-- Course Detail Modal -->
+    <div id="courseDetailModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div id="modalContent">
+                <!-- Dynamic content will be inserted here -->
+            </div>
+        </div>
+    </div>
 
     <script>
     let courses = [];
@@ -1303,6 +1400,154 @@ Autumn session
             found = (course.assessments[0].groupwork || 'Other');
         }
         return found;
+    }
+
+    function showCourseDetail(course) {
+        const modal = document.getElementById('courseDetailModal');
+        const content = document.getElementById('modalContent');
+        
+        let html = `
+            <div class="modal-header">
+                <h2>${course.code} - ${course.title}</h2>
+                <p>${course.credit_points}</p>
+            </div>
+        `;
+
+        // Overview section
+        if (course.overview) {
+            html += `
+                <div class="detail-section">
+                    <h3>Overview</h3>
+                    <p>${course.overview}</p>
+                </div>
+            `;
+        }
+
+        // Prerequisites
+        if (course.requisites) {
+            html += `
+                <div class="detail-section">
+                    <h3>Prerequisites</h3>
+                    <p>${course.requisites}</p>
+                </div>
+            `;
+        }
+
+        // Learning Outcomes
+        if (course.learning_outcomes && course.learning_outcomes.length > 0) {
+            html += `
+                <div class="detail-section">
+                    <h3>Learning Outcomes</h3>
+                    <ul class="detail-list">
+                        ${course.learning_outcomes.map(lo => 
+                            `<li>${lo.no}. ${lo.text}</li>`
+                        ).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        // Assessment Details
+        if (course.assessment && course.assessment.length > 0) {
+            html += `
+                <div class="detail-section">
+                    <h3>Assessment Tasks</h3>
+                    <div class="detail-grid">
+                        ${course.assessment.map(task => `
+                            <div class="assessment-detail">
+                                <h4>${task.title}</h4>
+                                <ul class="detail-list">
+                                    ${Object.entries(task.details).map(([key, value]) => 
+                                        `<li><strong>${key}:</strong> ${value}</li>`
+                                    ).join('')}
+                                </ul>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        content.innerHTML = html;
+        modal.style.display = 'block';
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('courseDetailModal');
+        modal.style.display = 'none';
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('courseDetailModal');
+        if (event.target === modal) {
+            closeModal();
+        }
+    }
+
+    function renderCourses(coursesToRender) {
+        const container = document.getElementById('cardContainer');
+        
+        if (!coursesToRender || coursesToRender.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <h3>No courses found</h3>
+                    <p>Try adjusting your filters or importing some courses</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = coursesToRender.map(course => {
+            let totalWeight = 0;
+            const assessments = course.assessment.map(task => {
+                const weight = parseInt(task.details.Weight) || 0;
+                totalWeight += weight;
+                return `
+                    <div class="assessment-item" onclick="showCourseDetail(${JSON.stringify(course)})">
+                        <div class="assessment-header">
+                            <span class="assessment-title">${task.title}</span>
+                            <span class="assessment-weight">${task.details.Weight || '0%'}</span>
+                        </div>
+                        <div class="assessment-intent">${task.details.Intent || 'No description available'}</div>
+                        <div class="assessment-details">
+                            <span class="tag tag-type">${task.details['Objective(s)'] ? 'Objectives' : 'No objectives'}</span>
+                            <span class="tag ${task.details.Groupwork?.toLowerCase().includes('group') ? 'tag-group' : 'tag-individual'}">
+                                ${task.details.Groupwork || 'Individual'}
+                            </span>
+                            <span class="length-pill">${task.details.Length || 'Duration not specified'}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="course-card" data-code="${course.code}">
+                    <div class="card-header" onclick="showCourseDetail(${JSON.stringify(course)})">
+                        <h2>${course.code} - ${course.title}</h2>
+                        <p>${course.credit_points} - ${totalWeight}% Total Weight</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="prerequisites">
+                            <strong>Prerequisites:</strong> ${course.requisites || 'None'}
+                        </div>
+                        ${assessments}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function updateLoadingProgress(completed, total, code) {
+        const progressBar = document.querySelector('.loading-spinner .progress-bar');
+        const statusText = document.getElementById('loadingStatus');
+        
+        if (progressBar && statusText) {
+            const percentage = (completed / total) * 100;
+            progressBar.style.width = `${percentage}%`;
+            statusText.textContent = `Loading ${code}... (${completed}/${total})`;
+        }
     }
     </script>
 </body>
