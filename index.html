@@ -2038,6 +2038,51 @@ Autumn session
         
         return truncated + '...';
     }
+
+    function formatOverviewText(overview) {
+        if (!overview) return '';
+        
+        let html = '';
+        
+        // Main Description Section
+        if (overview.description) {
+            html += `
+                <div class="overview-section-category">
+                    <h4><i class="fas fa-info-circle"></i> Course Description</h4>
+                    <div class="overview-content-category">
+                        <p class="overview-paragraph">${overview.description}</p>
+                    </div>
+                </div>`;
+        }
+
+        // Topics Section
+        if (overview.topics && overview.topics.length > 0) {
+            html += `
+                <div class="overview-section-category">
+                    <h4><i class="fas fa-list"></i> Key Topics</h4>
+                    <div class="overview-content-category">
+                        <ul class="topics-list">
+                            ${overview.topics.map(topic => `<li>${topic}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>`;
+        }
+
+        // Teaching Strategies Section
+        if (overview.teaching_strategies && overview.teaching_strategies.length > 0) {
+            html += `
+                <div class="overview-section-category">
+                    <h4><i class="fas fa-chalkboard-teacher"></i> Teaching Strategies</h4>
+                    <div class="overview-content-category">
+                        <ul class="strategy-list">
+                            ${overview.teaching_strategies.map(strategy => `<li>${strategy}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>`;
+        }
+        
+        return html;
+    }
     </script>
 </body>
 </html>
