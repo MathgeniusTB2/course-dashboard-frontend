@@ -1673,8 +1673,21 @@ Autumn session
                     `;
                 }).join('');
 
+                // Store sanitized course data for modal
+                const safeData = {
+                    code: course.code,
+                    title: course.title,
+                    credit_points: course.credit_points,
+                    requisites: course.requisites,
+                    overview: course.overview,
+                    learning_outcomes: course.learning_outcomes,
+                    assessments: course.assessments
+                };
+
                 return `
-                    <div class="course-card" data-course-code="${course.code}" tabindex="0">
+                    <div class="course-card" tabindex="0" role="button" 
+                        aria-label="View details for ${course.code} - ${course.title}"
+                        data-course='${JSON.stringify(safeData)}'>
                         <div class="card-header">
                             <h2>${course.code} - ${course.title}</h2>
                             <p>${course.credit_points}</p>
@@ -1694,22 +1707,33 @@ Autumn session
                 `;
             }).join('');
 
-            // Attach click handlers to course cards
-            document.querySelectorAll('.course-card').forEach(card => {
-                card.addEventListener('click', function() {
-                    const code = this.getAttribute('data-course-code');
-                    const course = courses.find(c => c.code === code);
-                    if (course) {
-                        showCourseDetail(course);
+            // Add click handlers to course cards
+            const cards = document.querySelectorAll('.course-card');
+            cards.forEach(card => {
+                const handleClick = () => {
+                    try {
+                        const courseData = JSON.parse(card.getAttribute('data-course'));
+                        showCourseDetail(courseData);
+                    } catch (err) {
+                        console.error('Error parsing course data:', err);
                     }
-                });
+                };
 
-                card.addEventListener('keydown', function(e) {
+                // Remove any existing event listeners
+                card.removeEventListener('click', handleClick);
+                card.removeEventListener('keydown', handleKeyPress);
+
+                // Add click handler
+                card.addEventListener('click', handleClick);
+
+                // Add keyboard handler
+                const handleKeyPress = (e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        this.click();
+                        handleClick();
                     }
-                });
+                };
+                card.addEventListener('keydown', handleKeyPress);
             });
 
         } catch (error) {
