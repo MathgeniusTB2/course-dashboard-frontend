@@ -1302,7 +1302,7 @@ Autumn session
 
             // Set up event handlers for closing
             const handleClickOutside = (e) => {
-                if (e.target === modal || e.target.classList.contains('modal-close')) {
+                if (e.target === modal) {
                     closeModal();
                 }
             };
@@ -1322,12 +1322,10 @@ Autumn session
             document.addEventListener('keydown', handleEscape);
 
             // Clean up on close
-            const cleanup = () => {
+            modal.addEventListener('hide', () => {
                 modal.removeEventListener('click', handleClickOutside);
                 document.removeEventListener('keydown', handleEscape);
-                modal.removeEventListener('hide', cleanup);
-            };
-            modal.addEventListener('hide', cleanup);
+            }, { once: true });
 
         } catch (error) {
             console.error('Error showing course details:', error);
@@ -2068,6 +2066,15 @@ Autumn session
                 }
             });
         });
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('courseDetailModal');
+        if (modal) {
+            modal.style.display = 'none';
+            // Clean up event listeners
+            modal.dispatchEvent(new Event('hide'));
+        }
     }
     </script>
 </body>
